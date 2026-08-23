@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-secondary: #F1F5F9;
+
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+
+  --primary: #4F46E5;
+  --primary-hover: #4338CA;
+  --primary-active: #3730A3;
+  --primary-soft: #E0E7FF;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  --success: #22C55E;
+  --success-soft: #DCFCE7;
+  --warning: #F59E0B;
+  --warning-soft: #FEF3C7;
+  --error: #EF4444;
+  --error-soft: #FEE2E2;
+  --info: #3B82F6;
+  --info-soft: #DBEAFE;
+
+  --sidebar-bg: #FFFFFF;
+  --sidebar-active-bg: #E0E7FF;
+  --sidebar-active-text: #4F46E5;
+}
+
+.dark {
+  --background: #0B0F14;
+  --foreground: #F8FAFC;
+
+  --surface: #111827;
+  --surface-elevated: #1F2937;
+  --surface-secondary: #1E293B;
+
+  --border: #273449;
+  --border-strong: #334155;
+
+  --primary: #6366F1;
+  --primary-hover: #818CF8;
+  --primary-active: #4F46E5;
+  --primary-soft: #1E1B4B;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+
+  --success: #22C55E;
+  --success-soft: #14532D;
+  --warning: #F59E0B;
+  --warning-soft: #78350F;
+  --error: #EF4444;
+  --error-soft: #7F1D1D;
+  --info: #3B82F6;
+  --info-soft: #1E3A8A;
+
+  --sidebar-bg: #111827;
+  --sidebar-active-bg: #1E1B4B;
+  --sidebar-active-text: #818CF8;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-soft: var(--primary-soft);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-active-bg: var(--sidebar-active-bg);
+  --color-sidebar-active-text: var(--sidebar-active-text);
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* Keyboard focus rings styling */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
