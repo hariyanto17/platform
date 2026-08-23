@@ -1,101 +1,52 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api";
-
-export interface UserAccess {
-  applicationCode: string;
-  role: {
-    code: string;
-    name: string;
-  };
-  permissions: string[];
-}
-
-export interface UserContext {
-  id: string;
-  name: string;
-  email: string;
-  organizationId: string;
-  organization: {
-    id: string;
-    name: string;
-  };
-  access: UserAccess[];
-}
+import { useGetMeQuery, useLoginMutation, useLogoutMutation } from "@/lib/api/authApi";
+import { UserContext } from "@/types/auth";
 
 interface AuthContextType {
   user: UserContext | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  checkSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserContext | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
 
-  const checkSession = React.useCallback(async () => {
-    try {
-      const data = await apiClient.get<UserContext>("/api/auth/me");
-      setUser(data);
-    } catch {
-      setUser(null);
-      if (pathname !== "/login") {
-        router.push("/login");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pathname, router]);
+  // RTK Query fetches session context automatically on mount
+  const { data: user = null, isLoading } = useGetMeQuery();
+  const [triggerLogin] = useLoginMutation();
+  const [triggerLogout] = useLogoutMutation();
 
+  // If unauthorized and not on login page, redirect to login
   useEffect(() => {
-    let isMounted = true;
-    Promise.resolve().then(() => {
-      if (isMounted) {
-        checkSession();
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, [checkSession]);
+    if (!isLoading && !user && pathname !== "/login") {
+      router.push("/login");
+    }
+  }, [user, isLoading, pathname, router]);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const data = await apiClient.post<UserContext>("/api/auth/login", { email, password });
-      setUser(data);
-      router.push("/");
-    } catch (err) {
-      setUser(null);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
+    await triggerLogin({ email, password }).unwrap();
+    router.push("/");
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
-      await apiClient.post("/api/auth/logout");
+      await triggerLogout().unwrap();
     } catch {
       // Ignore errors on logout
     } finally {
-      setUser(null);
-      setIsLoading(false);
       router.push("/login");
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, checkSession }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

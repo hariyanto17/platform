@@ -22,7 +22,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health Checks
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", timestamp: new Date() });
+  res.status(200).json({
+    status: "success",
+    message: "Health check successful",
+    data: { status: "OK", timestamp: new Date() }
+  });
 });
 
 app.get("/ping", (req, res) => {

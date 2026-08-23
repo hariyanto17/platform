@@ -65,7 +65,8 @@ test("API Test Suite", async (t) => {
     const res = await fetch(`${url}/health`);
     assert.strictEqual(res.status, 200);
     const body = await res.json() as any;
-    assert.strictEqual(body.status, "OK");
+    assert.strictEqual(body.status, "success");
+    assert.strictEqual(body.data.status, "OK");
   });
 
   await t.test("GET /ping returns 200 pong", async () => {

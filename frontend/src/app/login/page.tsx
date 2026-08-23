@@ -1,31 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAuth } from "@/providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useLoginMutation } from "@/lib/api/authApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Film } from "lucide-react";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const router = useRouter();
+  const [login, { isLoading }] = useLoginMutation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login({ email, password }).unwrap();
+      router.push("/");
     } catch (err: unknown) {
-      const errorObj = err as { message?: string };
-      setError(errorObj.message || "Email atau password salah.");
-    } finally {
-      setIsLoading(false);
+      const errorObj = err as { data?: { message?: string }; message?: string };
+      setError(errorObj.data?.message || errorObj.message || "Email atau password salah.");
     }
   };
 

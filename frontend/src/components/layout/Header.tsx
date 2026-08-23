@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, Sun, Moon, Monitor, User, LogOut, ChevronDown } from "lucide-react";
 import { useTheme } from "@/providers/ThemeProvider";
-import { useAuth } from "@/providers/AuthProvider";
+import { useGetMeQuery, useLogoutMutation } from "@/lib/api/authApi";
 
 export interface HeaderProps {
   onMenuClick: () => void;
@@ -12,8 +12,10 @@ export interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { data: user = null } = useGetMeQuery();
+  const [triggerLogout] = useLogoutMutation();
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -162,9 +164,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 Profil Saya
               </button>
               <button
-                onClick={() => {
-                  logout();
-                  setIsProfileOpen(false);
+                onClick={async () => {
+                  try {
+                    await triggerLogout().unwrap();
+                  } catch {
+                    // Ignore
+                  } finally {
+                    setIsProfileOpen(false);
+                    router.push("/login");
+                  }
                 }}
                 className="flex items-center gap-2.5 w-full px-2.5 py-1.5 text-xs text-error hover:bg-error-soft/60 rounded-md transition text-left cursor-pointer"
               >
