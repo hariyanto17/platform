@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Sun, Moon, Monitor, User, LogOut, ChevronDown } from "lucide-react";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuth } from "@/providers/AuthProvider";
 
 export interface HeaderProps {
   onMenuClick: () => void;
@@ -12,6 +13,7 @@ export interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -135,11 +137,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-surface-secondary hover:bg-surface transition text-left cursor-pointer"
           >
             <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-sm shadow-primary/20">
-              A
+              {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
             <div className="hidden sm:block text-xs">
-              <p className="font-semibold text-text-primary leading-none mb-0.5">Admin</p>
-              <p className="text-[10px] text-text-muted leading-none">Super Administrator</p>
+              <p className="font-semibold text-text-primary leading-none mb-0.5">{user?.name || "User"}</p>
+              <p className="text-[10px] text-text-muted leading-none">
+                {user?.access?.[0]?.role.name || "Access User"}
+              </p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
           </button>
@@ -147,8 +151,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-48 rounded-lg bg-surface border border-border shadow-xl z-50 p-1.5 flex flex-col gap-1">
               <div className="px-2.5 py-2 border-b border-border/50 text-left">
-                <p className="text-xs font-bold text-text-primary">Administrator</p>
-                <p className="text-[10px] text-text-muted truncate">admin@planetcinema.co.id</p>
+                <p className="text-xs font-bold text-text-primary truncate">{user?.name}</p>
+                <p className="text-[10px] text-text-muted truncate">{user?.email}</p>
               </div>
               <button
                 disabled
@@ -159,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               </button>
               <button
                 onClick={() => {
-                  alert("[Mock Action] Logout triggers API clearing. (Phase 1 Mock UI)");
+                  logout();
                   setIsProfileOpen(false);
                 }}
                 className="flex items-center gap-2.5 w-full px-2.5 py-1.5 text-xs text-error hover:bg-error-soft/60 rounded-md transition text-left cursor-pointer"
