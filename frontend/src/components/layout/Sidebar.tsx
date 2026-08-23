@@ -15,6 +15,8 @@ import {
   Film
 } from "lucide-react";
 
+import { useGetMeQuery } from "@/lib/api/authApi";
+
 export interface SidebarProps {
   isOpen: boolean;
   isCollapsed: boolean;
@@ -29,6 +31,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile
 }) => {
   const pathname = usePathname();
+  const { data: userResponse } = useGetMeQuery();
+  const user = userResponse?.data || null;
+
+  // Extract all permissions for PLATFORM application
+  const platformAccess = user?.access?.find((a) => a.applicationCode === "PLATFORM");
+  const permissions = platformAccess?.permissions || [];
+  const hasPermission = (perm: string) => permissions.includes(perm);
 
   const navigationGroups = [
     {
@@ -40,19 +49,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       label: "Management",
       items: [
-        { name: "Users", href: "/users", icon: <Users className="w-5 h-5" /> },
-        { name: "Organizations", href: "/organizations", icon: <Building2 className="w-5 h-5" /> },
-        { name: "Applications", href: "/applications", icon: <Tv2 className="w-5 h-5" /> },
-      ],
+        { name: "Users", href: "/users", icon: <Users className="w-5 h-5" />, permission: "platform.users.view" },
+        { name: "Organizations", href: "/organizations", icon: <Building2 className="w-5 h-5" />, permission: "platform.organizations.view" },
+        { name: "Applications", href: "/applications", icon: <Tv2 className="w-5 h-5" />, permission: "platform.applications.view" },
+      ].filter(item => !item.permission || hasPermission(item.permission)),
     },
     {
       label: "System",
       items: [
         { name: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
-        { name: "Audit Logs", href: "/audit-logs", icon: <History className="w-5 h-5" /> },
-      ],
+        { name: "Audit Logs", href: "/audit-logs", icon: <History className="w-5 h-5" />, permission: "platform.audit_logs.view" },
+      ].filter(item => !item.permission || hasPermission(item.permission)),
     },
-  ];
+  ].filter(group => group.items.length > 0);
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-sidebar-bg text-text-primary">

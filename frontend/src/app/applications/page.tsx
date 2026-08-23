@@ -1,28 +1,82 @@
 "use client";
 
 import React from "react";
-import { PageContainer } from "@/components/layout/PageContainer";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { useListApplicationsQuery } from "@/lib/api/applicationsApi";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Monitor, CheckCircle } from "lucide-react";
 
 export default function ApplicationsPage() {
+  const { data: appsResponse, isLoading } = useListApplicationsQuery();
+  const apps = appsResponse?.data || [];
+
   return (
-    <PageContainer>
-      <div className="text-left border-b border-border pb-4">
-        <h2 className="text-xl font-bold text-text-primary tracking-tight">Application Registries</h2>
-        <p className="text-xs text-text-muted">Kelola integrasi sub-aplikasi yang terdaftar.</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Daftar Aplikasi</h1>
+        <p className="text-sm text-text-muted">
+          Integrasi dan status sistem di dalam ekosistem Planet Cinema.
+        </p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Placeholder Panel</CardTitle>
-          <CardDescription className="text-xs">Fungsionalitas pendaftaran aplikasi akan datang pada Phase berikutnya.</CardDescription>
-        </CardHeader>
-        <CardContent className="text-left">
-          <p className="text-sm text-text-secondary leading-relaxed">
-            Halaman ini memetakan endpoint webhook dan kredensial API untuk modul Consession & Ticketing.
-          </p>
-        </CardContent>
+        {isLoading ? (
+          <div className="p-8 space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : apps.length === 0 ? (
+          <EmptyState
+            title="Tidak Ada Aplikasi Terdaftar"
+            description="Tidak ada sistem integrasi yang dikonfigurasi saat ini."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-surface-secondary border-b border-border">
+                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Aplikasi</th>
+                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Kode</th>
+                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Deskripsi</th>
+                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Assigned Users</th>
+                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {apps.map((app) => (
+                  <tr key={app.id} className="hover:bg-surface-secondary/40 transition-colors">
+                    <td className="px-6 py-4 text-text-primary font-medium">
+                      <div className="flex items-center gap-2.5">
+                        <Monitor className="w-5 h-5 text-primary" />
+                        <span className="font-semibold text-text-primary">{app.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-text-primary font-medium">
+                      <Badge variant="default" className="font-mono bg-surface-secondary">
+                        {app.code}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-text-primary font-medium max-w-md text-text-secondary truncate">
+                      {app.description || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-text-primary font-medium pl-6">
+                      {app.assignedUsersCount ?? 0}
+                    </td>
+                    <td className="px-6 py-4 text-text-primary font-medium">
+                      <Badge variant="success" className="flex items-center gap-1 w-fit">
+                        <CheckCircle className="w-3 h-3" />
+                        Aktif
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
-    </PageContainer>
+    </div>
   );
 }

@@ -23,11 +23,6 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     }
   }
 
-  // Unwrap response data if it is wrapped in our custom API envelope
-  if (result.data && typeof result.data === "object" && "data" in result.data) {
-    return { ...result, data: (result.data as Record<string, unknown>).data };
-  }
-
   return result;
 };
 

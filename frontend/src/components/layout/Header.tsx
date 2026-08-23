@@ -14,7 +14,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const { data: user = null } = useGetMeQuery();
+  const { data: userResponse } = useGetMeQuery();
+  const user = userResponse?.data || null;
   const [triggerLogout] = useLogoutMutation();
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);

@@ -143,11 +143,155 @@ test("API Test Suite", async (t) => {
     assert.ok(body.data.access);
   });
 
+  await t.test("GET /api/users unauthenticated returns 401", async () => {
+    const res = await fetch(`${url}/api/users`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  await t.test("GET /api/users authenticated returns user list", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/users`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.ok(Array.isArray(body.data));
+    assert.ok(body.meta.total >= 1);
+  });
+
+  await t.test("POST /api/users creates a new user", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const newUserEmail = `newuser-${Date.now()}@test.com`;
+    const res = await fetch(`${url}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: "New Admin Member",
+        email: newUserEmail,
+        password: "SecretNewPassword123!",
+        organizationId: testOrg.id,
+      }),
+    });
+
+    assert.strictEqual(res.status, 201);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.strictEqual(body.data.email, newUserEmail);
+    assert.ok(!body.data.passwordHash); // Ensure passwordHash not exposed
+
+    // Duplicate check
+    const dupRes = await fetch(`${url}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: "New Admin Member",
+        email: newUserEmail,
+        password: "SecretNewPassword123!",
+        organizationId: testOrg.id,
+      }),
+    });
+    assert.strictEqual(dupRes.status, 409); // CONFLICT
+  });
+
+  await t.test("POST /api/access checks permissions and prevents duplicate grants", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // Let's create a target user first
+    const targetUserEmail = `target-${Date.now()}@test.com`;
+    const userRes = await fetch(`${url}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: "Target Cashier",
+        email: targetUserEmail,
+        password: "TargetPassword123!",
+        organizationId: testOrg.id,
+      }),
+    });
+    const targetUser = (await userRes.json() as any).data;
+
+    // Get Concession Cashier Role
+    const roleRes = await fetch(`${url}/api/roles`, { headers: { cookie } });
+    const roles = (await roleRes.json() as any).data;
+    const concessionCashierRole = roles.find((r: any) => r.code === "CONCESSION_CASHIER");
+
+    assert.ok(concessionCashierRole);
+
+    // Grant access
+    const grantRes = await fetch(`${url}/api/access`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        userId: targetUser.id,
+        applicationCode: "CONCESSION",
+        roleId: concessionCashierRole.id,
+      }),
+    });
+    assert.strictEqual(grantRes.status, 201);
+
+    // Check duplicate grant
+    const dupGrantRes = await fetch(`${url}/api/access`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        userId: targetUser.id,
+        applicationCode: "CONCESSION",
+        roleId: concessionCashierRole.id,
+      }),
+    });
+    assert.strictEqual(dupGrantRes.status, 409); // CONFLICT
+
+    // Check role mismatched application validation
+    const mismatchedRole = roles.find((r: any) => r.code === "TICKETING_CASHIER");
+    const mismatchRes = await fetch(`${url}/api/access`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        userId: targetUser.id,
+        applicationCode: "CONCESSION",
+        roleId: mismatchedRole.id,
+      }),
+    });
+    assert.strictEqual(mismatchRes.status, 400); // BAD_REQUEST
+  });
+
+  await t.test("GET /api/audit-logs returns audit logs with metadata", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/audit-logs`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.ok(Array.isArray(body.data));
+    assert.ok(body.meta.total >= 1);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({
     where: {
-      id: { in: [activeUser.id, disabledUser.id] },
+      email: { contains: "test.com" }
     },
   });
   await prisma.organization.delete({

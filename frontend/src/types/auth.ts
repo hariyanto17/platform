@@ -1,4 +1,5 @@
 export interface UserAccess {
+  id: string;
   applicationCode: string;
   role: {
     code: string;
@@ -11,7 +12,9 @@ export interface UserContext {
   id: string;
   name: string;
   email: string;
+  status: string;
   organizationId: string;
+  createdAt: string;
   organization: {
     id: string;
     name: string;

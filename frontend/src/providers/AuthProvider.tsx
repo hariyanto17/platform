@@ -19,7 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   // RTK Query fetches session context automatically on mount
-  const { data: user = null, isLoading } = useGetMeQuery();
+  const { data: userResponse, isLoading } = useGetMeQuery();
+  const user = userResponse?.data || null;
   const [triggerLogin] = useLoginMutation();
   const [triggerLogout] = useLogoutMutation();
 

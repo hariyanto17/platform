@@ -44,6 +44,9 @@ async function main() {
     { code: "platform.organizations.view", name: "View tenant settings", applicationCode: "PLATFORM" },
     { code: "platform.applications.view", name: "View system integrations", applicationCode: "PLATFORM" },
     { code: "platform.audit_logs.view", name: "Access security audit logs", applicationCode: "PLATFORM" },
+    { code: "platform.access.manage", name: "Manage user application access", applicationCode: "PLATFORM" },
+    { code: "platform.roles.view", name: "View role registry", applicationCode: "PLATFORM" },
+    { code: "platform.permissions.view", name: "View permission mapping rules", applicationCode: "PLATFORM" },
 
     // Ticketing permissions
     { code: "ticketing.dashboard.view", name: "View Ticket Dashboard", applicationCode: "TICKETING" },
@@ -98,7 +101,8 @@ async function main() {
     PLATFORM_ADMINISTRATOR: [
       "platform.dashboard.view", "platform.users.view", "platform.users.create",
       "platform.users.update", "platform.users.disable", "platform.organizations.view",
-      "platform.applications.view", "platform.audit_logs.view"
+      "platform.applications.view", "platform.audit_logs.view", "platform.access.manage",
+      "platform.roles.view", "platform.permissions.view"
     ],
     TICKETING_ADMINISTRATOR: [
       "ticketing.dashboard.view", "ticketing.movies.view", "ticketing.movies.create",

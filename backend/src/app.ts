@@ -6,6 +6,12 @@ import { errorHandler } from "./utils/errorHandler";
 
 // Import Routers
 import authRouter from "./modules/auth/router";
+import usersRouter from "./modules/users/router";
+import orgsRouter from "./modules/organizations/router";
+import appsRouter from "./modules/applications/router";
+import rolesRouter from "./modules/roles/router";
+import accessRouter from "./modules/access/router";
+import auditRouter from "./modules/auditLogs/router";
 
 const app = express();
 
@@ -35,6 +41,12 @@ app.get("/ping", (req, res) => {
 
 // Mounted Routers
 app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/organizations", orgsRouter);
+app.use("/api/applications", appsRouter);
+app.use("/api", rolesRouter); // Exposes /api/roles and /api/permissions
+app.use("/api/access", accessRouter);
+app.use("/api/audit-logs", auditRouter);
 
 // Global Error Handler Middleware
 app.use(errorHandler);
