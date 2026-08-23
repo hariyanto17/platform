@@ -1,0 +1,146 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ApplicationStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Organization {
+  id                  String                  @id @default(uuid())
+  name                String                  @unique
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  users               User[]
+  applicationAccesses UserApplicationAccess[]
+}
+
+model User {
+  id                  String                  @id @default(uuid())
+  name                String
+  email               String                  @unique
+  passwordHash        String
+  status              UserStatus              @default(ACTIVE)
+  organizationId      String
+  organization        Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  applicationAccesses UserApplicationAccess[]
+
+  @@index([status])
+  @@index([organizationId])
+}
+
+model Application {
+  id                  String                  @id @default(uuid())
+  code                String                  @unique // e.g. "PLATFORM", "TICKETING", "CONCESSION"
+  name                String
+  description         String?
+  status              ApplicationStatus       @default(ACTIVE)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  roles               Role[]
+  permissions         Permission[]
+  applicationAccesses UserApplicationAccess[]
+
+  @@index([status])
+}
+
+model Role {
+  id                  String                  @id @default(uuid())
+  code                String                  @unique // e.g. "PLATFORM_ADMINISTRATOR", "TICKETING_CASHIER"
+  name                String
+  applicationCode     String
+  application         Application             @relation(fields: [applicationCode], references: [code], onDelete: Cascade)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  rolePermissions     RolePermission[]
+  applicationAccesses UserApplicationAccess[]
+
+  @@index([applicationCode])
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  code            String           @unique // e.g. "platform.users.view"
+  name            String
+  applicationCode String
+  application     Application      @relation(fields: [applicationCode], references: [code], onDelete: Cascade)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+
+  @@index([applicationCode])
+}
+
+model UserApplicationAccess {
+  id              String       @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationCode String
+  application     Application  @relation(fields: [applicationCode], references: [code], onDelete: Cascade)
+  roleId          String
+  role            Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([userId, applicationCode])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([applicationCode])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model Session {
+  id         String   @id // Stores the HASHED session token
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // e.g. "LOGIN", "USER_CREATED"
+  entity    String   // e.g. "User", "Role"
+  entityId  String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
