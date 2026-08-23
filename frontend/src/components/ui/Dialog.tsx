@@ -23,19 +23,61 @@ export const Dialog: React.FC<DialogProps> = ({
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Handle escape to close & background click
+  // Handle escape to close, background click, focus trapping, and focus restoration
   useEffect(() => {
     if (!isOpen) return;
+
+    // Store the previously focused element for focus restoration on close
+    const previouslyFocusedElement = document.activeElement as HTMLElement | null;
+
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const container = containerRef.current;
+
+    // Set initial focus to the first focusable element inside the modal
+    if (container) {
+      const focusableElements = Array.from(container.querySelectorAll(focusableSelector)) as HTMLElement[];
+      if (focusableElements.length > 0) {
+        // Focus the first element (e.g. the close button or first input field)
+        focusableElements[0].focus();
+      }
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && container) {
+        const focusableElements = Array.from(container.querySelectorAll(focusableSelector)) as HTMLElement[];
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab: Wrap focus from first element to last element
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab: Wrap focus from last element to first element
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      // Restore focus to original active element
+      if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+      }
     };
   }, [isOpen, onClose]);
 
