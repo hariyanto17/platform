@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       label: "System",
       items: [
-        { name: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
+        { name: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" />, permission: "platform.settings.view" },
         { name: "Audit Logs", href: "/audit-logs", icon: <History className="w-5 h-5" />, permission: "platform.audit_logs.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
     },

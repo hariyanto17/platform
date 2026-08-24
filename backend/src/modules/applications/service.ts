@@ -20,3 +20,38 @@ export const listApplications = async () => {
 
   return mappedApps;
 };
+
+export const getApplicationByCode = async (code: string) => {
+  const app = await prisma.application.findUnique({
+    where: { code },
+    include: {
+      roles: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+      permissions: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!app) {
+    return null;
+  }
+
+  const assignedUsersCount = await prisma.userApplicationAccess.count({
+    where: { applicationCode: code },
+  });
+
+  return {
+    ...app,
+    assignedUsersCount,
+  };
+};

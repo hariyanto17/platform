@@ -47,6 +47,8 @@ async function main() {
     { code: "platform.access.manage", name: "Manage user application access", applicationCode: "PLATFORM" },
     { code: "platform.roles.view", name: "View role registry", applicationCode: "PLATFORM" },
     { code: "platform.permissions.view", name: "View permission mapping rules", applicationCode: "PLATFORM" },
+    { code: "platform.settings.view", name: "View platform configurations", applicationCode: "PLATFORM" },
+    { code: "platform.settings.update", name: "Update platform configurations", applicationCode: "PLATFORM" },
 
     // Ticketing permissions
     { code: "ticketing.dashboard.view", name: "View Ticket Dashboard", applicationCode: "TICKETING" },
@@ -102,7 +104,8 @@ async function main() {
       "platform.dashboard.view", "platform.users.view", "platform.users.create",
       "platform.users.update", "platform.users.disable", "platform.organizations.view",
       "platform.applications.view", "platform.audit_logs.view", "platform.access.manage",
-      "platform.roles.view", "platform.permissions.view"
+      "platform.roles.view", "platform.permissions.view", "platform.settings.view",
+      "platform.settings.update"
     ],
     TICKETING_ADMINISTRATOR: [
       "ticketing.dashboard.view", "ticketing.movies.view", "ticketing.movies.create",
@@ -140,6 +143,24 @@ async function main() {
     }
   }
   console.log("- Role-Permission links established");
+
+  // 5.5 App Settings Seeding
+  const defaultSettings = [
+    { key: "platform_name", value: "Planet Cinema" },
+    { key: "timezone", value: "Asia/Makassar" },
+    { key: "currency", value: "IDR" },
+    { key: "date_format", value: "DD/MM/YYYY" },
+    { key: "time_format", value: "HH:mm" },
+  ];
+
+  for (const setting of defaultSettings) {
+    await prisma.appSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+  console.log("- Default settings seeded");
 
   // 6. Admin Account creation
   const seedEmail = process.env.PLATFORM_SEED_ADMIN_EMAIL || "admin@planetcinema.co.id";

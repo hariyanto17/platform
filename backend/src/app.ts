@@ -13,6 +13,7 @@ import rolesRouter from "./modules/roles/router";
 import accessRouter from "./modules/access/router";
 import auditRouter from "./modules/auditLogs/router";
 import dashboardRouter from "./modules/dashboard/router";
+import settingsRouter from "./modules/settings/router";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api", rolesRouter); // Exposes /api/roles and /api/permissions
 app.use("/api/access", accessRouter);
 app.use("/api/audit-logs", auditRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/settings", settingsRouter);
 
 // Global Error Handler Middleware
 app.use(errorHandler);

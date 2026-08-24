@@ -353,6 +353,80 @@ test("API Test Suite", async (t) => {
     assert.ok(Array.isArray(body.data.enabledApplications));
   });
 
+  await t.test("GET /api/settings returns settings object", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/settings`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.ok(body.data.platform_name);
+  });
+
+  await t.test("GET /api/settings unauthorized returns 401", async () => {
+    const res = await fetch(`${url}/api/settings`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  await t.test("PATCH /api/settings updates config and creates audit log", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const payload = {
+      platform_name: "Planet Cinema Premium",
+      timezone: "Asia/Makassar",
+      currency: "IDR",
+      date_format: "DD-MM-YYYY",
+      time_format: "HH:mm",
+    };
+
+    const res = await fetch(`${url}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify(payload),
+    });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.strictEqual(body.data.platform_name, "Planet Cinema Premium");
+
+    // Verify audit log
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        userId: activeUser.id,
+        action: "SETTINGS_UPDATED",
+      },
+    });
+    assert.strictEqual(auditLogs.length, 1);
+  });
+
+  await t.test("PATCH /api/settings with invalid payload returns 400", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        platform_name: "", // Invalid: empty
+      }),
+    });
+    assert.strictEqual(res.status, 400);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({
