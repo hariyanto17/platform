@@ -5,6 +5,7 @@ declare global {
         id: string;
         name: string;
         email: string;
+        status: string;
         organizationId: string;
         organization: { id: string; name: string };
         access: Array<{

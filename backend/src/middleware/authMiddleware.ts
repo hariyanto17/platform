@@ -69,6 +69,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
+      status: session.user.status,
       organizationId: session.user.organizationId,
       organization: {
         id: session.user.organization.id,

@@ -52,5 +52,23 @@ export const getMeHandler = async (req: Request, res: Response) => {
   if (!req.user) {
     throw new AppError("UNAUTHORIZED", "Not authenticated");
   }
-  return responseHandler.ok(res, req.user, "Current user context retrieved");
+
+  const applications = req.user.access.map((acc) => ({
+    code: acc.applicationCode,
+    role: acc.role.code,
+    permissions: acc.permissions,
+  }));
+
+  const responseData = {
+    id: req.user.id,
+    email: req.user.email,
+    name: req.user.name,
+    status: req.user.status,
+    organization: req.user.organization,
+    applications,
+    // Keep access for compatibility with current frontend components
+    access: req.user.access,
+  };
+
+  return responseHandler.ok(res, responseData, "Current user context retrieved");
 };

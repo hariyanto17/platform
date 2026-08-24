@@ -20,4 +20,9 @@ export interface UserContext {
     name: string;
   };
   access: UserAccess[];
+  applications: Array<{
+    code: string;
+    role: string;
+    permissions: string[];
+  }>;
 }
