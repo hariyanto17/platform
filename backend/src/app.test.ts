@@ -287,6 +287,39 @@ test("API Test Suite", async (t) => {
     assert.ok(body.meta.total >= 1);
   });
 
+  await t.test("PATCH /api/users/:id/status prevents self-lockout/disabling own account", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // Attempt to disable self
+    const res = await fetch(`${url}/api/users/${activeUser.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "DISABLED" }),
+    });
+    assert.strictEqual(res.status, 400);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "error");
+    assert.strictEqual(body.message, "Anda tidak dapat menonaktifkan akun Anda sendiri");
+
+    // Verify status remains ACTIVE
+    const freshUser = await prisma.user.findUnique({ where: { id: activeUser.id } });
+    assert.strictEqual(freshUser?.status, "ACTIVE");
+
+    // Verify no USER_DISABLED audit log
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        userId: activeUser.id,
+        action: "USER_DISABLED",
+      },
+    });
+    assert.strictEqual(auditLogs.length, 0);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({

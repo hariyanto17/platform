@@ -176,6 +176,10 @@ export const updateUserStatus = async (adminUserId: string, id: string, status: 
     throw new AppError("NOT_FOUND", "User tidak ditemukan");
   }
 
+  if (id === adminUserId && status === "DISABLED") {
+    throw new AppError("BAD_REQUEST", "Anda tidak dapat menonaktifkan akun Anda sendiri");
+  }
+
   const updated = await prisma.user.update({
     where: { id },
     data: { status },
