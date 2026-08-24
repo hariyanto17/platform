@@ -87,7 +87,7 @@ export default function ApplicationsPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-text-primary font-medium text-right">
-                        <Link href={`/applications/${app.code}`} passHref legacyBehavior>
+                        <Link href={`/applications/${app.code}`}>
                           <Button variant="secondary">
                             Lihat Detail
                           </Button>
