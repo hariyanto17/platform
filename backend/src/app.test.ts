@@ -320,6 +320,39 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(auditLogs.length, 0);
   });
 
+  await t.test("GET /api/dashboard/overview returns overview counts", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/dashboard/overview`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.ok(body.data.totalUsers >= 1);
+    assert.ok(body.data.totalOrgs >= 1);
+  });
+
+  await t.test("GET /api/organizations/:id returns detailed organization properties", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/organizations/${testOrg.id}`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    assert.strictEqual(body.data.id, testOrg.id);
+    assert.ok(Array.isArray(body.data.users));
+    assert.ok(Array.isArray(body.data.enabledApplications));
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({
