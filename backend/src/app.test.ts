@@ -427,6 +427,73 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(res.status, 400);
   });
 
+  await t.test("POST /api/applications/:code/launch flow tests", async () => {
+    // 1. Unauthenticated launch
+    const unauthLaunch = await fetch(`${url}/api/applications/CONCESSION/launch`, { method: "POST" });
+    assert.strictEqual(unauthLaunch.status, 401);
+
+    // Login activeUser
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // 2. Launch application without access
+    const forbiddenLaunch = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie },
+    });
+    assert.strictEqual(forbiddenLaunch.status, 403);
+
+    // Grant access to CONCESSION
+    const roleConcessionAdmin = await prisma.role.findUnique({ where: { code: "CONCESSION_ADMINISTRATOR" } });
+    if (roleConcessionAdmin) {
+      await prisma.userApplicationAccess.create({
+        data: {
+          userId: activeUser.id,
+          organizationId: testOrg.id,
+          applicationCode: "CONCESSION",
+          roleId: roleConcessionAdmin.id,
+        },
+      });
+    }
+
+    // 3. Launch application with access
+    const successLaunch = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie },
+    });
+    assert.strictEqual(successLaunch.status, 200);
+    const launchBody = await successLaunch.json() as any;
+    assert.strictEqual(launchBody.status, "success");
+    assert.ok(launchBody.data.code);
+
+    const ssoCode = launchBody.data.code;
+
+    // 4. Exchange code for application context
+    const exchangeRes = await fetch(`${url}/api/applications/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: ssoCode, application: "CONCESSION" }),
+    });
+    assert.strictEqual(exchangeRes.status, 200);
+    const exchangeBody = await exchangeRes.json() as any;
+    assert.strictEqual(exchangeBody.status, "success");
+    assert.strictEqual(exchangeBody.data.email, activeUser.email);
+    assert.strictEqual(exchangeBody.data.application.code, "CONCESSION");
+    assert.strictEqual(exchangeBody.data.application.role, "CONCESSION_ADMINISTRATOR");
+
+    // 5. Replay attack: try exchanging same code again
+    const replayExchange = await fetch(`${url}/api/applications/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: ssoCode, application: "CONCESSION" }),
+    });
+    assert.strictEqual(replayExchange.status, 401);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({

@@ -1,18 +1,45 @@
 "use client";
 
 import React from "react";
-import { useListApplicationsQuery } from "@/lib/api/applicationsApi";
+import { useListApplicationsQuery, useLaunchApplicationMutation } from "@/lib/api/applicationsApi";
+import { useGetMeQuery } from "@/lib/api/authApi";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Monitor, CheckCircle, HelpCircle } from "lucide-react";
+import { Monitor, CheckCircle, HelpCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export default function ApplicationsPage() {
   const { data: appsResponse, isLoading } = useListApplicationsQuery();
   const apps = appsResponse?.data || [];
+
+  const [launchApp, { isLoading: isLaunching }] = useLaunchApplicationMutation();
+  const { data: meResponse } = useGetMeQuery();
+  const me = meResponse?.data;
+
+  const handleLaunch = async (code: string) => {
+    try {
+      const res = await launchApp(code).unwrap();
+      const launchCode = res.data.code;
+
+      let appUrl = "";
+      if (code === "CONCESSION") {
+        appUrl = process.env.NEXT_PUBLIC_CONCESSION_APP_URL || "http://localhost:3050";
+      } else if (code === "TICKETING") {
+        appUrl = process.env.NEXT_PUBLIC_TICKETING_APP_URL || "http://localhost:3011";
+      }
+
+      if (appUrl) {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination, react-hooks/immutability
+        window.location.href = `${appUrl}/sso/callback?code=${launchCode}`;
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal meluncurkan aplikasi. Silakan coba lagi.");
+    }
+  };
 
   const getHealthStatusText = (code: string) => {
     if (code === "PLATFORM") {
@@ -57,6 +84,8 @@ export default function ApplicationsPage() {
               <tbody className="divide-y divide-border/60">
                 {apps.map((app) => {
                   const health = getHealthStatusText(app.code);
+                  const hasLaunchAccess = me?.applications?.some((a) => a.code === app.code) || false;
+
                   return (
                     <tr key={app.id} className="hover:bg-surface-secondary/40 transition-colors">
                       <td className="px-6 py-4 text-text-primary font-medium">
@@ -87,11 +116,24 @@ export default function ApplicationsPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-text-primary font-medium text-right">
-                        <Link href={`/applications/${app.code}`}>
-                          <Button variant="secondary">
-                            Lihat Detail
-                          </Button>
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {app.code !== "PLATFORM" && hasLaunchAccess && (
+                            <Button
+                              variant="primary"
+                              onClick={() => handleLaunch(app.code)}
+                              disabled={isLaunching}
+                              className="flex items-center gap-1.5"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Buka (SSO)
+                            </Button>
+                          )}
+                          <Link href={`/applications/${app.code}`}>
+                            <Button variant="secondary">
+                              Detail
+                            </Button>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

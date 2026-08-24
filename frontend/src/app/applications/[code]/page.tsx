@@ -1,11 +1,13 @@
 "use client";
 
 import React, { use } from "react";
-import { useGetApplicationByCodeQuery } from "@/lib/api/applicationsApi";
+import { useGetApplicationByCodeQuery, useLaunchApplicationMutation } from "@/lib/api/applicationsApi";
+import { useGetMeQuery } from "@/lib/api/authApi";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Monitor, Shield, Settings, HelpCircle, ArrowLeft, Calendar, ShieldCheck, CheckCircle } from "lucide-react";
+import { Monitor, Shield, Settings, HelpCircle, ArrowLeft, Calendar, ShieldCheck, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 interface ApplicationDetailPageProps {
@@ -18,6 +20,35 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
 
   const { data: detailResponse, isLoading } = useGetApplicationByCodeQuery(code);
   const app = detailResponse?.data;
+
+  const [launchApp, { isLoading: isLaunching }] = useLaunchApplicationMutation();
+  const { data: meResponse } = useGetMeQuery();
+  const me = meResponse?.data;
+
+  // Check if current user has access to this app
+  const hasLaunchAccess = me?.applications?.some((a) => a.code === code) || false;
+
+  const handleLaunch = async () => {
+    try {
+      const res = await launchApp(code).unwrap();
+      const launchCode = res.data.code;
+
+      let appUrl = "";
+      if (code === "CONCESSION") {
+        appUrl = process.env.NEXT_PUBLIC_CONCESSION_APP_URL || "http://localhost:3050";
+      } else if (code === "TICKETING") {
+        appUrl = process.env.NEXT_PUBLIC_TICKETING_APP_URL || "http://localhost:3011";
+      }
+
+      if (appUrl) {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = `${appUrl}/sso/callback?code=${launchCode}`;
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal meluncurkan aplikasi. Silakan coba lagi.");
+    }
+  };
 
   const getHealthStatus = (appCode: string) => {
     if (appCode === "PLATFORM") {
@@ -187,6 +218,21 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
                     </div>
                   </div>
                 </div>
+
+                {/* Launch Application SSO Action */}
+                {app.code !== "PLATFORM" && hasLaunchAccess && (
+                  <div className="pt-4 border-t border-border/50">
+                    <Button
+                      variant="primary"
+                      onClick={handleLaunch}
+                      disabled={isLaunching}
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      {isLaunching ? "Meluncurkan..." : "Buka Aplikasi (SSO)"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

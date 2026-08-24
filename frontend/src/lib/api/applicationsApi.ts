@@ -32,7 +32,13 @@ export const applicationsApi = baseApi.injectEndpoints({
     getApplicationByCode: builder.query<ApiResponse<ApplicationDetail>, string>({
       query: (code) => `/api/applications/${code}`,
     }),
+    launchApplication: builder.mutation<ApiResponse<{ code: string; application: string; expiresAt: string }>, string>({
+      query: (code) => ({
+        url: `/api/applications/${code}/launch`,
+        method: "POST",
+      }),
+    }),
   }),
 });
 
-export const { useListApplicationsQuery, useGetApplicationByCodeQuery } = applicationsApi;
+export const { useListApplicationsQuery, useGetApplicationByCodeQuery, useLaunchApplicationMutation } = applicationsApi;
