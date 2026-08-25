@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { useGetDashboardOverviewQuery } from "@/lib/api/dashboardApi";
+import React, { useState } from "react";
+import { useGetDashboardOverviewQuery, useGetDashboardOperationsQuery } from "@/lib/api/dashboardApi";
 import { useLaunchApplicationMutation } from "@/lib/api/applicationsApi";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
@@ -18,11 +18,23 @@ import {
   ArrowRight,
   RefreshCw,
   AlertTriangle,
-  Play
+  Play,
+  TrendingUp,
+  Ticket,
+  UtensilsCrossed,
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 
 export default function UnifiedExecutiveDashboard() {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Return local date formatted as YYYY-MM-DD
+    const local = new Date();
+    const offset = local.getTimezoneOffset();
+    const localDate = new Date(local.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split("T")[0];
+  });
+
   const {
     data: dashboardResponse,
     isLoading: isDashboardLoading,
@@ -33,12 +45,22 @@ export default function UnifiedExecutiveDashboard() {
     refetchOnFocus: true,
   });
 
+  const {
+    data: opsResponse,
+    isLoading: isOpsLoading,
+    isFetching: isOpsFetching,
+    refetch: refetchOps,
+  } = useGetDashboardOperationsQuery(selectedDate, {
+    refetchOnFocus: true,
+  });
+
   const { data: meResponse } = useGetMeQuery();
   const me = meResponse?.data;
 
   const [launchApp, { isLoading: isLaunching }] = useLaunchApplicationMutation();
 
   const metrics = dashboardResponse?.data;
+  const ops = opsResponse?.data;
 
   const handleLaunch = async (code: string) => {
     try {
@@ -53,7 +75,7 @@ export default function UnifiedExecutiveDashboard() {
       }
 
       if (appUrl) {
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination, react-hooks/immutability
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = `${appUrl}/sso/callback?code=${launchCode}`;
       }
     } catch (err) {
@@ -72,6 +94,33 @@ export default function UnifiedExecutiveDashboard() {
     return "bg-surface-secondary text-text-secondary";
   };
 
+  const formatRupiah = (val: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  const formatDateLabel = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleRefreshAll = () => {
+    refetchDashboard();
+    refetchOps();
+  };
+
   if (dashboardError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-surface-secondary/40 rounded-xl border border-border">
@@ -80,7 +129,7 @@ export default function UnifiedExecutiveDashboard() {
         <p className="text-sm text-text-muted max-w-sm mb-5">
           Terjadi kesalahan saat berkomunikasi dengan server otentikasi pusat. Silakan periksa koneksi Anda dan coba lagi.
         </p>
-        <Button onClick={() => refetchDashboard()} variant="primary" className="flex items-center gap-2">
+        <Button onClick={handleRefreshAll} variant="primary" className="flex items-center gap-2">
           <RefreshCw className="w-4 h-4" /> Coba Lagi
         </Button>
       </div>
@@ -101,185 +150,358 @@ export default function UnifiedExecutiveDashboard() {
   ].filter((act) => !act.permission || hasPermission(act.permission));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Top Banner Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-border pb-5">
         <div className="text-left">
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard Eksekutif</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Pusat Operasional Terintegrasi</h1>
           <p className="text-sm text-text-muted">
-            Overview status integrasi ekosistem, performa tenant, dan log keamanan terpusat.
+            Executive control plane and business performance overview for Planet Cinema ecosystem.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted font-medium">Business Date:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-surface-secondary border border-border rounded px-2.5 py-1 text-sm font-semibold text-text-primary focus:outline-none focus:border-primary"
+            />
+          </div>
           <Button
-            onClick={() => refetchDashboard()}
+            onClick={handleRefreshAll}
             variant="secondary"
-            disabled={isDashboardLoading || isDashboardFetching}
+            disabled={isDashboardLoading || isDashboardFetching || isOpsLoading || isOpsFetching}
             className="flex items-center gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${isDashboardFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isDashboardFetching || isOpsFetching ? "animate-spin" : ""}`} />
             Perbarui Data
           </Button>
         </div>
       </div>
 
-      {/* Metrics Cards Grid */}
-      {isDashboardLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6 space-y-3">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-8 w-1/3" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-left">
-                <CardTitle className="text-sm font-semibold">Total Pengguna</CardTitle>
-                <CardDescription className="text-[10px]">Aktif vs Dikunci</CardDescription>
-              </div>
-              <Users className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent className="text-left">
-              <p className="text-2xl font-bold">{metrics?.totalUsers ?? 0}</p>
-              <p className="text-[10px] text-text-muted mt-1">
-                <span className="text-success font-semibold">{metrics?.activeUsers ?? 0} Aktif</span> • {metrics?.disabledUsers ?? 0} Dikunci
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-left">
-                <CardTitle className="text-sm font-semibold">Organisasi / Tenant</CardTitle>
-                <CardDescription className="text-[10px]">Bioskop Terdaftar</CardDescription>
-              </div>
-              <Building2 className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent className="text-left">
-              <p className="text-2xl font-bold">{metrics?.totalOrgs ?? 0}</p>
-              <p className="text-[10px] text-success mt-1">✓ Konfigurasi tenant aktif</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-left">
-                <CardTitle className="text-sm font-semibold">Aplikasi Terintegrasi</CardTitle>
-                <CardDescription className="text-[10px]">Sub-Sistem Terkoneksi</CardDescription>
-              </div>
-              <Monitor className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent className="text-left">
-              <p className="text-2xl font-bold">{metrics?.totalApps ?? 0}</p>
-              <p className="text-[10px] text-text-muted mt-1">
-                Authoritative Control Plane
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-left">
-                <CardTitle className="text-sm font-semibold">Pemetaan Akses</CardTitle>
-                <CardDescription className="text-[10px]">Total Hak Akses Aktif</CardDescription>
-              </div>
-              <Shield className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent className="text-left">
-              <p className="text-2xl font-bold">{metrics?.totalAccesses ?? 0}</p>
-              <p className="text-[10px] text-success mt-1">✓ Izin otentikasi dipetakan</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Ecosystem Connected Applications Section */}
+      {/* OPERATIONS SUMMARY SECTION */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider text-left">
-          Status & Akses Aplikasi Ekosistem
+        <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider text-left flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-primary" />
+          Kinerja Bisnis Hari Ini ({formatDateLabel(selectedDate)})
         </h2>
-        {isDashboardLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+        {isOpsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
               <Card key={i}>
-                <CardContent className="p-6 space-y-4">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-1/3" />
                 </CardContent>
               </Card>
             ))}
           </div>
-        ) : !metrics?.applications || metrics.applications.length === 0 ? (
-          <div className="p-8 text-center text-sm text-text-muted bg-surface-secondary/30 rounded-lg border border-border border-dashed">
-            Tidak ada sub-aplikasi yang terkonfigurasi.
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {metrics.applications.map((app) => {
-              const hasLaunchAccess = me?.applications?.some((a) => a.code === app.code) || false;
-              const isPlatformApp = app.code === "PLATFORM";
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {/* Combined Revenue Card */}
+            <Card className="bg-gradient-to-br from-primary-soft/40 to-surface-secondary border border-primary/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-bold text-primary">Kombinasi Total Pendapatan</CardTitle>
+                  <CardDescription className="text-[10px]">Tiketing + Konsesi (Terbayar)</CardDescription>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent className="text-left">
+                <p className="text-3xl font-extrabold text-primary">{formatRupiah(ops?.summary?.totalRevenue ?? 0)}</p>
+                <p className="text-[10px] text-text-muted mt-1.5 font-medium">
+                  {ops?.summary?.totalTransactions ?? 0} total transaksi gabungan
+                </p>
+              </CardContent>
+            </Card>
 
-              return (
-                <Card key={app.code} className="hover:border-primary/30 transition-all duration-200">
-                  <CardHeader className="pb-3 text-left">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="default" className="font-mono bg-surface-secondary text-[10px] text-text-secondary">
-                        {app.code}
-                      </Badge>
-                      <Badge variant={app.status === "ACTIVE" ? "success" : "destructive"}>
-                        {app.status === "ACTIVE" ? "ONLINE" : "OFFLINE"}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-base font-bold mt-2">{app.name}</CardTitle>
-                    <CardDescription className="text-xs text-text-muted mt-1 min-h-[32px] line-clamp-2">
-                      {app.description || "Tidak ada deskripsi terkonfigurasi."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-2 text-left space-y-4">
-                    <div className="flex items-center justify-between text-xs border-t border-b border-border/50 py-2.5">
-                      <span className="text-text-secondary">Pengguna Terdaftar:</span>
-                      <span className="font-bold text-text-primary">{app.userCount} Pengguna</span>
-                    </div>
+            {/* Ticketing Revenue Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-bold">Pendapatan Tiketing</CardTitle>
+                  <CardDescription className="text-[10px]">Pajak & Layanan Termasuk</CardDescription>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-success-soft flex items-center justify-center">
+                  <Ticket className="w-4 h-4 text-success" />
+                </div>
+              </CardHeader>
+              <CardContent className="text-left">
+                {ops?.ticketing?.status === "UNAVAILABLE" ? (
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-error">Unavailable</p>
+                    <p className="text-[10px] text-error font-medium">Sistem Tiketing tidak terjangkau</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-2xl font-bold text-text-primary">{formatRupiah(ops?.ticketing?.revenue ?? 0)}</p>
+                    <p className="text-[10px] text-success mt-1.5 font-semibold">
+                      ✓ {ops?.ticketing?.ticketsSold ?? 0} tiket terjual dari {ops?.ticketing?.transactions ?? 0} transaksi
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                    <div className="flex items-center gap-2 pt-1">
-                      {isPlatformApp ? (
-                        <div className="text-xs text-text-muted select-none italic">
-                          Aplikasi Kontrol Saat Ini
-                        </div>
-                      ) : hasLaunchAccess ? (
-                        <Button
-                          onClick={() => handleLaunch(app.code)}
-                          disabled={isLaunching || app.status !== "ACTIVE"}
-                          className="w-full flex items-center justify-center gap-2"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          Launch App
-                        </Button>
-                      ) : (
-                        <div className="text-xs text-error font-medium">
-                          Anda Tidak Memiliki Akses
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {/* Concession Revenue Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-bold">Pendapatan Konsesi</CardTitle>
+                  <CardDescription className="text-[10px]">Makanan, Minuman & Merchandise</CardDescription>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-warning-soft flex items-center justify-center">
+                  <UtensilsCrossed className="w-4 h-4 text-warning" />
+                </div>
+              </CardHeader>
+              <CardContent className="text-left">
+                {ops?.concession?.status === "UNAVAILABLE" ? (
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-error">Unavailable</p>
+                    <p className="text-[10px] text-error font-medium">Sistem Konsesi tidak terjangkau</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-2xl font-bold text-text-primary">{formatRupiah(ops?.concession?.revenue ?? 0)}</p>
+                    <p className="text-[10px] text-warning-soft mt-1.5 font-semibold">
+                      ✓ {ops?.concession?.itemsSold ?? 0} produk terjual dari {ops?.concession?.transactions ?? 0} transaksi
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
 
-      {/* Main Grid: Quick Actions & Recent Audits */}
+      {/* DETAILED BUSINESS PERFORMANCE */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Ticketing App Metrics */}
+        <Card className="flex flex-col">
+          <CardHeader className="border-b border-border pb-3 text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-primary" />
+                <span className="font-bold text-base">Kasir & Penjualan Tiket (Ticketing)</span>
+              </div>
+              {isOpsLoading ? (
+                <Skeleton className="h-5 w-16" />
+              ) : (
+                <Badge variant={ops?.ticketing?.status === "CONNECTED" ? "success" : "destructive"}>
+                  {ops?.ticketing?.status === "CONNECTED" ? "CONNECTED" : "UNAVAILABLE"}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 flex-1 flex flex-col justify-between text-left min-h-[160px]">
+            {isOpsLoading ? (
+              <div className="space-y-3 py-2">
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-2/3" />
+              </div>
+            ) : ops?.ticketing?.status === "UNAVAILABLE" ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <AlertTriangle className="w-8 h-8 text-error mb-2 animate-pulse" />
+                <p className="text-xs text-text-muted max-w-xs">
+                  Gagal menghubungi Ticketing service. Sistem POS Kasir tetap dapat berjalan offline namun integrasi dashboard terputus.
+                </p>
+                <Button variant="secondary" onClick={refetchOps} className="mt-3 text-xs">
+                  Coba Hubungkan Kembali
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border-r border-border/50 pr-4">
+                    <p className="text-xs text-text-muted">Total Penjualan Tiket</p>
+                    <p className="text-xl font-bold mt-1">{ops?.ticketing?.ticketsSold ?? 0} Tiket</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted">Total Transaksi</p>
+                    <p className="text-xl font-bold mt-1">{ops?.ticketing?.transactions ?? 0} Transaksi</p>
+                  </div>
+                </div>
+                <div className="border-t border-border/50 pt-3 flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">Rata-rata per Transaksi:</span>
+                  <span className="font-bold text-text-primary">
+                    {formatRupiah(ops?.ticketing?.averageTransaction ?? 0)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 pt-4 border-t border-border/40">
+              <Button
+                onClick={() => handleLaunch("TICKETING")}
+                disabled={isLaunching || ops?.ticketing?.status !== "CONNECTED"}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Buka Aplikasi Tiketing (SSO Quick Launch)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Concession App Metrics */}
+        <Card className="flex flex-col">
+          <CardHeader className="border-b border-border pb-3 text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="w-5 h-5 text-primary" />
+                <span className="font-bold text-base">Makanan & Minuman (Concession)</span>
+              </div>
+              {isOpsLoading ? (
+                <Skeleton className="h-5 w-16" />
+              ) : (
+                <Badge variant={ops?.concession?.status === "CONNECTED" ? "success" : "destructive"}>
+                  {ops?.concession?.status === "CONNECTED" ? "CONNECTED" : "UNAVAILABLE"}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 flex-1 flex flex-col justify-between text-left min-h-[160px]">
+            {isOpsLoading ? (
+              <div className="space-y-3 py-2">
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-2/3" />
+              </div>
+            ) : ops?.concession?.status === "UNAVAILABLE" ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <AlertTriangle className="w-8 h-8 text-error mb-2 animate-pulse" />
+                <p className="text-xs text-text-muted max-w-xs">
+                  Gagal menghubungi Concession service. Pastikan dev server atau endpoint eksternal aktif.
+                </p>
+                <Button variant="secondary" onClick={refetchOps} className="mt-3 text-xs">
+                  Coba Hubungkan Kembali
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border-r border-border/50 pr-4">
+                    <p className="text-xs text-text-muted">Item Terjual (F&B)</p>
+                    <p className="text-xl font-bold mt-1">{ops?.concession?.itemsSold ?? 0} Item</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted">Total Transaksi</p>
+                    <p className="text-xl font-bold mt-1">{ops?.concession?.transactions ?? 0} Transaksi</p>
+                  </div>
+                </div>
+                <div className="border-t border-border/50 pt-3 flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">Rata-rata per Transaksi:</span>
+                  <span className="font-bold text-text-primary">
+                    {formatRupiah(ops?.concession?.averageTransaction ?? 0)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 pt-4 border-t border-border/40">
+              <Button
+                onClick={() => handleLaunch("CONCESSION")}
+                disabled={isLaunching || ops?.concession?.status !== "CONNECTED"}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Buka Aplikasi Konsesi (SSO Quick Launch)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CORE ADMINISTRATIVE CONTROL PLANE OVERVIEW */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider text-left flex items-center gap-2">
+          <Layers className="w-4 h-4 text-primary" />
+          Pusat Kontrol Administratif & Keamanan
+        </h2>
+        
+        {isDashboardLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-1/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-semibold">Total Pengguna</CardTitle>
+                  <CardDescription className="text-[10px]">Aktif vs Dikunci</CardDescription>
+                </div>
+                <Users className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent className="text-left">
+                <p className="text-2xl font-bold">{metrics?.totalUsers ?? 0}</p>
+                <p className="text-[10px] text-text-muted mt-1">
+                  <span className="text-success font-semibold">{metrics?.activeUsers ?? 0} Aktif</span> • {metrics?.disabledUsers ?? 0} Dikunci
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-semibold">Organisasi / Tenant</CardTitle>
+                  <CardDescription className="text-[10px]">Bioskop Terdaftar</CardDescription>
+                </div>
+                <Building2 className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent className="text-left">
+                <p className="text-2xl font-bold">{metrics?.totalOrgs ?? 0}</p>
+                <p className="text-[10px] text-success mt-1">✓ Konfigurasi tenant aktif</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-semibold">Aplikasi Terintegrasi</CardTitle>
+                  <CardDescription className="text-[10px]">Sub-Sistem Terkoneksi</CardDescription>
+                </div>
+                <Monitor className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent className="text-left">
+                <p className="text-2xl font-bold">{metrics?.totalApps ?? 0}</p>
+                <p className="text-[10px] text-text-muted mt-1">
+                  Authoritative Control Plane
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-left">
+                  <CardTitle className="text-sm font-semibold">Pemetaan Akses</CardTitle>
+                  <CardDescription className="text-[10px]">Total Hak Akses Aktif</CardDescription>
+                </div>
+                <Shield className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent className="text-left">
+                <p className="text-2xl font-bold">{metrics?.totalAccesses ?? 0}</p>
+                <p className="text-[10px] text-success mt-1">✓ Izin otentikasi dipetakan</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* QUICK ACTIONS & AUDIT LOGS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions (1/3 width) */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider text-left">
+        <div className="space-y-4 text-left">
+          <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">
             Aksi Cepat
           </h2>
           <Card>
@@ -325,7 +547,7 @@ export default function UnifiedExecutiveDashboard() {
                   Belum ada aktivitas administratif tercatat.
                 </div>
               ) : (
-                <div className="flow-root">
+                <div className="flow-root text-left">
                   <ul className="-mb-8">
                     {metrics.recentLogs.map((log, logIdx) => (
                       <li key={log.id}>

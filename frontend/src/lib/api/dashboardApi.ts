@@ -28,12 +28,41 @@ export interface DashboardOverviewData {
   }>;
 }
 
+export interface OperationsOverviewData {
+  date: string;
+  currency: string;
+  summary: {
+    totalRevenue: number;
+    totalTransactions: number;
+  };
+  ticketing: {
+    status: "CONNECTED" | "UNAVAILABLE";
+    revenue: number;
+    ticketsSold: number;
+    transactions: number;
+    averageTransaction: number;
+  };
+  concession: {
+    status: "CONNECTED" | "UNAVAILABLE";
+    revenue: number;
+    transactions: number;
+    itemsSold: number;
+    averageTransaction: number;
+  };
+}
+
 export const dashboardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDashboardOverview: builder.query<ApiResponse<DashboardOverviewData>, void>({
       query: () => "/api/dashboard/overview",
     }),
+    getDashboardOperations: builder.query<ApiResponse<OperationsOverviewData>, string | void>({
+      query: (date) => ({
+        url: "/api/dashboard/operations",
+        params: date ? { date } : undefined,
+      }),
+    }),
   }),
 });
 
-export const { useGetDashboardOverviewQuery } = dashboardApi;
+export const { useGetDashboardOverviewQuery, useGetDashboardOperationsQuery } = dashboardApi;

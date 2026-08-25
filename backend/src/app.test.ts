@@ -382,6 +382,30 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(res.status, 403);
   });
 
+  await t.test("GET /api/dashboard/operations returns aggregated operations summary even when offline", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/dashboard/operations`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    
+    assert.ok(body.data.summary);
+    assert.strictEqual(body.data.ticketing.status, "UNAVAILABLE");
+    assert.strictEqual(body.data.concession.status, "UNAVAILABLE");
+    assert.strictEqual(body.data.summary.totalRevenue, 0);
+  });
+
+  await t.test("GET /api/dashboard/operations unauthenticated returns 401", async () => {
+    const res = await fetch(`${url}/api/dashboard/operations`);
+    assert.strictEqual(res.status, 401);
+  });
+
   await t.test("GET /api/organizations/:id returns detailed organization properties", async () => {
     const loginRes = await fetch(`${url}/api/auth/login`, {
       method: "POST",
