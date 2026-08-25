@@ -72,3 +72,35 @@ export const getMeHandler = async (req: Request, res: Response) => {
 
   return responseHandler.ok(res, responseData, "Current user context retrieved");
 };
+
+export const getApplicationContextHandler = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError("UNAUTHORIZED", "Not authenticated");
+  }
+
+  const { applicationCode } = req.params;
+  const appCode = applicationCode.toUpperCase();
+
+  if (req.user.status !== "ACTIVE") {
+    throw new AppError("UNAUTHORIZED", "User is disabled");
+  }
+
+  const access = req.user.access.find((acc) => acc.applicationCode === appCode);
+  if (!access) {
+    throw new AppError("FORBIDDEN", `Access denied to application: ${appCode}`);
+  }
+
+  const responseData = {
+    user: {
+      id: req.user.id,
+      status: req.user.status,
+    },
+    application: {
+      code: appCode,
+      role: access.role.code,
+      permissions: access.permissions,
+    },
+  };
+
+  return responseHandler.ok(res, responseData, "Application context retrieved successfully");
+};

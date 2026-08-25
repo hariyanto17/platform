@@ -570,6 +570,65 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(body.data.status, "DISABLED");
   });
 
+  await t.test("GET /api/auth/application-context/:applicationCode", async () => {
+    // 1. Unauthenticated context check
+    const unauthRes = await fetch(`${url}/api/auth/application-context/CONCESSION`);
+    assert.strictEqual(unauthRes.status, 401);
+
+    // Login activeUser
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // 2. Active user with access gets 200
+    const successRes = await fetch(`${url}/api/auth/application-context/CONCESSION`, {
+      headers: { cookie },
+    });
+    assert.strictEqual(successRes.status, 200);
+    const successBody = await successRes.json() as any;
+    assert.strictEqual(successBody.status, "success");
+    assert.strictEqual(successBody.data.user.id, activeUser.id);
+    assert.strictEqual(successBody.data.application.code, "CONCESSION");
+
+    // 3. Requesting access for non-assigned app gets 403
+    const forbiddenRes = await fetch(`${url}/api/auth/application-context/TICKETING`, {
+      headers: { cookie },
+    });
+    assert.strictEqual(forbiddenRes.status, 403);
+  });
+
+  await t.test("GET /api/applications/users/:platformUserId/context (internal API)", async () => {
+    // 1. Unauthenticated internal call (missing header)
+    const noHeaderRes = await fetch(`${url}/api/applications/users/${activeUser.id}/context?application=CONCESSION`);
+    assert.strictEqual(noHeaderRes.status, 401);
+
+    // 2. Unauthenticated internal call (invalid header)
+    const badHeaderRes = await fetch(`${url}/api/applications/users/${activeUser.id}/context?application=CONCESSION`, {
+      headers: { "x-platform-internal-key": "wrong-secret-key" },
+    });
+    assert.strictEqual(badHeaderRes.status, 401);
+
+    // 3. Valid credentials check
+    const internalKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
+    const successRes = await fetch(`${url}/api/applications/users/${activeUser.id}/context?application=CONCESSION`, {
+      headers: { "x-platform-internal-key": internalKey },
+    });
+    assert.strictEqual(successRes.status, 200);
+    const successBody = await successRes.json() as any;
+    assert.strictEqual(successBody.status, "success");
+    assert.strictEqual(successBody.data.id, activeUser.id);
+    assert.strictEqual(successBody.data.application.role, "CONCESSION_ADMINISTRATOR");
+
+    // 4. Revoked app / no access user returns 403
+    const forbiddenRes = await fetch(`${url}/api/applications/users/${activeUser.id}/context?application=TICKETING`, {
+      headers: { "x-platform-internal-key": internalKey },
+    });
+    assert.strictEqual(forbiddenRes.status, 403);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({

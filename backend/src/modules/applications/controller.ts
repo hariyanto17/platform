@@ -34,3 +34,22 @@ export const exchangeLaunchCodeHandler = async (req: Request, res: Response) => 
   const result = await appsService.exchangeLaunchCode(code, application.toUpperCase());
   return responseHandler.ok(res, result, "Launch code exchanged successfully");
 };
+
+export const getPlatformUserContextHandler = async (req: Request, res: Response) => {
+  const apiKey = req.headers["x-platform-internal-key"];
+  const expectedKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
+
+  if (!apiKey || apiKey !== expectedKey) {
+    throw new AppError("UNAUTHORIZED", "Invalid or missing internal service credential");
+  }
+
+  const { platformUserId } = req.params;
+  const { application } = req.query;
+
+  if (!platformUserId || !application) {
+    throw new AppError("BAD_REQUEST", "platformUserId and application query parameters are required");
+  }
+
+  const result = await appsService.getPlatformUserContext(platformUserId, application.toString().toUpperCase());
+  return responseHandler.ok(res, result, "Platform user context retrieved successfully");
+};

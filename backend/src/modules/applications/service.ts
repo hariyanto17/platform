@@ -212,3 +212,50 @@ export const exchangeLaunchCode = async (rawCode: string, appCode: string) => {
     },
   };
 };
+
+export const getPlatformUserContext = async (platformUserId: string, appCode: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: platformUserId },
+    include: {
+      applicationAccesses: {
+        where: { applicationCode: appCode },
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new AppError("NOT_FOUND", "User not found");
+  }
+
+  if (user.status !== "ACTIVE") {
+    throw new AppError("UNAUTHORIZED", "User account is disabled");
+  }
+
+  const access = user.applicationAccesses[0];
+  if (!access) {
+    throw new AppError("FORBIDDEN", `Access has been revoked for application: ${appCode}`);
+  }
+
+  const permissions = access.role.rolePermissions.map((rp: any) => rp.permission.code);
+
+  return {
+    id: user.id,
+    status: user.status,
+    application: {
+      code: appCode,
+      role: access.role.code,
+      permissions,
+    },
+  };
+};
