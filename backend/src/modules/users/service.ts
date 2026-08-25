@@ -3,7 +3,14 @@ import { prisma } from "../../utils/prisma";
 import { AppError } from "../../utils/errorHandler";
 import { logActivity } from "../../utils/activityLogger";
 
-export const listUsers = async (page: number, limit: number, search?: string) => {
+export const listUsers = async (
+  page: number,
+  limit: number,
+  search?: string,
+  status?: string,
+  organizationId?: string,
+  applicationCode?: string
+) => {
   const skip = (page - 1) * limit;
 
   const where: any = {};
@@ -12,6 +19,22 @@ export const listUsers = async (page: number, limit: number, search?: string) =>
       { name: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
     ];
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (organizationId) {
+    where.organizationId = organizationId;
+  }
+
+  if (applicationCode) {
+    where.applicationAccesses = {
+      some: {
+        applicationCode,
+      },
+    };
   }
 
   const [total, users] = await Promise.all([
@@ -50,14 +73,28 @@ export const listUsers = async (page: number, limit: number, search?: string) =>
     }),
   ]);
 
+  const items = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    status: u.status,
+    organization: u.organization,
+    applications: u.applicationAccesses.map((access) => ({
+      code: access.applicationCode,
+      role: access.role.code,
+    })),
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  }));
+
   const totalPages = Math.ceil(total / limit);
 
   return {
-    users,
-    meta: {
-      total,
+    items,
+    pagination: {
       page,
       limit,
+      total,
       totalPages,
     },
   };
@@ -82,11 +119,22 @@ export const getUserById = async (id: string) => {
       },
       applicationAccesses: {
         include: {
-          role: {
+          application: {
             select: {
-              id: true,
-              code: true,
               name: true,
+            },
+          },
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: {
+                    select: {
+                      code: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -98,7 +146,22 @@ export const getUserById = async (id: string) => {
     throw new AppError("NOT_FOUND", "User tidak ditemukan");
   }
 
-  return user;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    status: user.status,
+    organization: user.organization,
+    applications: user.applicationAccesses.map((access) => ({
+      code: access.applicationCode,
+      name: access.application.name,
+      role: access.role.code,
+      permissions: access.role.rolePermissions.map((rp) => rp.permission.code),
+      status: "ACTIVE",
+    })),
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 };
 
 export const createUser = async (

@@ -735,6 +735,101 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(forbiddenRes.status, 403);
   });
 
+  await t.test("Phase 7D User Access Management Tests", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const targetUserEmail = `access-test-${Date.now()}@test.com`;
+    const userRes = await fetch(`${url}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: "Access Test User",
+        email: targetUserEmail,
+        password: "Password123!",
+        organizationId: testOrg.id,
+      }),
+    });
+    assert.strictEqual(userRes.status, 201);
+    const targetUser = (await userRes.json() as any).data;
+
+    const grantRes = await fetch(`${url}/api/users/${targetUser.id}/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        applicationCode: "CONCESSION",
+        role: "CONCESSION_CASHIER",
+      }),
+    });
+    assert.strictEqual(grantRes.status, 201);
+    const grantBody = await grantRes.json() as any;
+    assert.strictEqual(grantBody.status, "success");
+
+    const dupRes = await fetch(`${url}/api/users/${targetUser.id}/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        applicationCode: "CONCESSION",
+        role: "CONCESSION_CASHIER",
+      }),
+    });
+    assert.strictEqual(dupRes.status, 409);
+
+    const changeRes = await fetch(`${url}/api/users/${targetUser.id}/applications/CONCESSION`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        role: "CONCESSION_ADMINISTRATOR",
+      }),
+    });
+    assert.strictEqual(changeRes.status, 200);
+
+    const invalidRoleRes = await fetch(`${url}/api/users/${targetUser.id}/applications/CONCESSION`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        role: "TICKETING_CASHIER",
+      }),
+    });
+    assert.strictEqual(invalidRoleRes.status, 400);
+
+    const detailRes = await fetch(`${url}/api/users/${targetUser.id}`, { headers: { cookie } });
+    assert.strictEqual(detailRes.status, 200);
+    const detailBody = await detailRes.json() as any;
+    assert.strictEqual(detailBody.data.applications[0].role, "CONCESSION_ADMINISTRATOR");
+    assert.ok(detailBody.data.applications[0].permissions.length > 0);
+
+    const revokeRes = await fetch(`${url}/api/users/${targetUser.id}/applications/CONCESSION`, {
+      method: "DELETE",
+      headers: { cookie },
+    });
+    assert.strictEqual(revokeRes.status, 200);
+
+    const detailRes2 = await fetch(`${url}/api/users/${targetUser.id}`, { headers: { cookie } });
+    const detailBody2 = await detailRes2.json() as any;
+    assert.strictEqual(detailBody2.data.applications.length, 0);
+
+    const normalLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: targetUserEmail, password: "Password123!" }),
+    });
+    const normalCookie = normalLoginRes.headers.get("set-cookie") || "";
+    const idorRes = await fetch(`${url}/api/users/${activeUser.id}/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie: normalCookie },
+      body: JSON.stringify({
+        applicationCode: "CONCESSION",
+        role: "CONCESSION_CASHIER",
+      }),
+    });
+    assert.strictEqual(idorRes.status, 403);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({

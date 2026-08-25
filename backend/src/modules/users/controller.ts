@@ -9,9 +9,18 @@ export const listUsersHandler = async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string, 10) || 1;
   const limit = parseInt(req.query.limit as string, 10) || 20;
   const search = req.query.search as string | undefined;
+  const status = req.query.status as string | undefined;
+  const organizationId = req.query.organizationId as string | undefined;
+  const application = req.query.application as string | undefined;
 
-  const result = await usersService.listUsers(page, limit, search);
-  return responseHandler.ok(res, result.users, "Users retrieved successfully", result.meta);
+  const result = await usersService.listUsers(page, limit, search, status, organizationId, application);
+  return responseHandler.ok(res, result.items, "Users retrieved successfully", {
+    total: result.pagination.total,
+    page: result.pagination.page,
+    limit: result.pagination.limit,
+    totalPages: result.pagination.totalPages,
+    pagination: result.pagination,
+  });
 };
 
 export const getUserByIdHandler = async (req: Request, res: Response) => {

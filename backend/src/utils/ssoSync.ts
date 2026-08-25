@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 
 export const propagateUserSync = async (userId: string, appCode: string) => {
-  if (process.env.NODE_ENV === "test") {
+  if (process.env.NODE_ENV === "test" || process.argv.some((arg) => arg.includes("test"))) {
     return;
   }
   try {
