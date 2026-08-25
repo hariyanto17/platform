@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { responseHandler } from "../../utils/responeHandler";
 import * as appsService from "./service";
 import { AppError } from "../../utils/errorHandler";
+import crypto from "crypto";
 
 export const listApplicationsHandler = async (req: Request, res: Response) => {
   const apps = await appsService.listApplications();
@@ -35,11 +36,22 @@ export const exchangeLaunchCodeHandler = async (req: Request, res: Response) => 
   return responseHandler.ok(res, result, "Launch code exchanged successfully");
 };
 
+
+
 export const getPlatformUserContextHandler = async (req: Request, res: Response) => {
-  const apiKey = req.headers["x-platform-internal-key"];
+  const apiKey = req.headers["x-platform-internal-key"]?.toString();
   const expectedKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
 
-  if (!apiKey || apiKey !== expectedKey) {
+  let isMatch = false;
+  if (apiKey) {
+    const aBuf = Buffer.from(apiKey);
+    const bBuf = Buffer.from(expectedKey);
+    if (aBuf.length === bBuf.length) {
+      isMatch = crypto.timingSafeEqual(aBuf, bBuf);
+    }
+  }
+
+  if (!isMatch) {
     throw new AppError("UNAUTHORIZED", "Invalid or missing internal service credential");
   }
 
