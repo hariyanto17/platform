@@ -400,10 +400,47 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(body.data.concession.status, "UNAVAILABLE");
     assert.strictEqual(body.data.summary.totalRevenue, 0);
   });
-
   await t.test("GET /api/dashboard/operations unauthenticated returns 401", async () => {
     const res = await fetch(`${url}/api/dashboard/operations`);
     assert.strictEqual(res.status, 401);
+  });
+
+  await t.test("GET /api/dashboard/activity returns aggregated platform activities even when downstream is offline", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/dashboard/activity`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    
+    assert.ok(Array.isArray(body.data.activities));
+    assert.strictEqual(body.data.ticketingStatus, "UNAVAILABLE");
+    assert.strictEqual(body.data.concessionStatus, "UNAVAILABLE");
+  });
+
+  await t.test("GET /api/dashboard/transactions returns paginated list of transactions even when downstream is offline", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/dashboard/transactions?page=1&limit=10`, { headers: { cookie } });
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.status, "success");
+    
+    assert.ok(Array.isArray(body.data.transactions));
+    assert.strictEqual(body.data.pagination.page, 1);
+    assert.strictEqual(body.data.pagination.limit, 10);
+    assert.strictEqual(body.data.ticketingStatus, "UNAVAILABLE");
+    assert.strictEqual(body.data.concessionStatus, "UNAVAILABLE");
   });
 
   await t.test("GET /api/organizations/:id returns detailed organization properties", async () => {
