@@ -9,6 +9,7 @@ export const getDashboardOverview = async () => {
     totalApps,
     totalAccesses,
     recentLogs,
+    applications,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -28,6 +29,16 @@ export const getDashboardOverview = async () => {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    prisma.application.findMany({
+      include: {
+        _count: {
+          select: {
+            applicationAccesses: true,
+          },
+        },
+      },
+      orderBy: { code: "asc" },
+    }),
   ]);
 
   return {
@@ -38,5 +49,12 @@ export const getDashboardOverview = async () => {
     totalApps,
     totalAccesses,
     recentLogs,
+    applications: applications.map(app => ({
+      code: app.code,
+      name: app.name,
+      description: app.description,
+      status: app.status,
+      userCount: app._count.applicationAccesses,
+    })),
   };
 };

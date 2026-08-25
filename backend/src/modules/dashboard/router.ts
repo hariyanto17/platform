@@ -1,10 +1,15 @@
 import { Router } from "express";
 import { catchAsync } from "../../utils/catchAsyc";
 import { getDashboardOverviewHandler } from "./controller";
-import { authenticate } from "../../middleware/authMiddleware";
+import { authenticate, requirePermission } from "../../middleware/authMiddleware";
 
 const router = Router();
 
-router.get("/overview", authenticate, catchAsync(getDashboardOverviewHandler));
+router.get(
+  "/overview",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getDashboardOverviewHandler)
+);
 
 export default router;

@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       label: "Overview",
       items: [
-        { name: "Dashboard", href: "/", icon: <LayoutDashboard className="w-5 h-5" /> },
+        { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
       ],
     },
     {

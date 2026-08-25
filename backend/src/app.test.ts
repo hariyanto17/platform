@@ -335,6 +335,51 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(body.status, "success");
     assert.ok(body.data.totalUsers >= 1);
     assert.ok(body.data.totalOrgs >= 1);
+    assert.ok(body.data.applications);
+    assert.ok(Array.isArray(body.data.applications));
+    assert.ok(body.data.recentLogs);
+    
+    // Verify sensitive data is not returned
+    const str = JSON.stringify(body.data);
+    assert.ok(!str.includes("passwordHash"));
+  });
+
+  await t.test("GET /api/dashboard/overview unauthenticated returns 401", async () => {
+    const res = await fetch(`${url}/api/dashboard/overview`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  await t.test("GET /api/dashboard/overview unauthorized returns 403", async () => {
+    // Create a target user without platform permissions
+    const adminLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const adminCookie = adminLoginRes.headers.get("set-cookie") || "";
+
+    const targetUserEmail = `target-dash-${Date.now()}@test.com`;
+    const userRes = await fetch(`${url}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie: adminCookie },
+      body: JSON.stringify({
+        name: "Ordinary Cashier",
+        email: targetUserEmail,
+        password: "CashierPassword123!",
+        organizationId: testOrg.id,
+      }),
+    });
+    assert.strictEqual(userRes.status, 201);
+
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: targetUserEmail, password: "CashierPassword123!" }),
+    });
+    const cashierCookie = loginRes.headers.get("set-cookie") || "";
+
+    const res = await fetch(`${url}/api/dashboard/overview`, { headers: { cookie: cashierCookie } });
+    assert.strictEqual(res.status, 403);
   });
 
   await t.test("GET /api/organizations/:id returns detailed organization properties", async () => {

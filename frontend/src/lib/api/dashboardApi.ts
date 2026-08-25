@@ -19,6 +19,13 @@ export interface DashboardOverviewData {
       email: string;
     } | null;
   }>;
+  applications: Array<{
+    code: string;
+    name: string;
+    description: string | null;
+    status: string;
+    userCount: number;
+  }>;
 }
 
 export const dashboardApi = baseApi.injectEndpoints({
