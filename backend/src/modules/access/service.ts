@@ -58,6 +58,9 @@ export const grantAccess = async (
     roleCode: role.code,
   });
 
+  const { propagateUserSync } = require("../../utils/ssoSync");
+  await propagateUserSync(data.userId, data.applicationCode);
+
   return access;
 };
 
@@ -74,6 +77,9 @@ export const revokeAccess = async (adminUserId: string, id: string) => {
   }
 
   await prisma.userApplicationAccess.delete({ where: { id } });
+
+  const { propagateUserSync } = require("../../utils/ssoSync");
+  await propagateUserSync(access.userId, access.applicationCode);
 
   await logActivity(adminUserId, "APPLICATION_ACCESS_REVOKED", "UserApplicationAccess", id, {
     userId: access.userId,

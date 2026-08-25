@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
 import http from "node:http";
+import crypto from "node:crypto";
 import app from "./app";
 import { prisma } from "./utils/prisma";
 import argon2 from "argon2";
@@ -492,6 +493,81 @@ test("API Test Suite", async (t) => {
       body: JSON.stringify({ code: ssoCode, application: "CONCESSION" }),
     });
     assert.strictEqual(replayExchange.status, 401);
+  });
+
+  await t.test("POST /api/applications/exchange concurrent requests", async () => {
+    // Login activeUser
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // Generate launch code
+    const successLaunch = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie },
+    });
+    assert.strictEqual(successLaunch.status, 200);
+    const launchBody = await successLaunch.json() as any;
+    const ssoCode = launchBody.data.code;
+
+    // Send two concurrent exchange requests using Promise.all
+    const [res1, res2] = await Promise.all([
+      fetch(`${url}/api/applications/exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: ssoCode, application: "CONCESSION" }),
+      }),
+      fetch(`${url}/api/applications/exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: ssoCode, application: "CONCESSION" }),
+      }),
+    ]);
+
+    // Exactly one should succeed (200), and the other should fail (401)
+    const statuses = [res1.status, res2.status].sort();
+    assert.deepStrictEqual(statuses, [200, 401]);
+
+    // Check usedAt in database
+    const codeHash = crypto.createHash("sha256").update(ssoCode).digest("hex");
+    const dbRecord = await prisma.applicationLaunchCode.findUnique({
+      where: { codeHash },
+    });
+    assert.ok(dbRecord);
+    assert.ok(dbRecord.usedAt);
+  });
+
+  await t.test("PATCH /api/users/:id/status propagates user state sync", async () => {
+    // Login admin
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // Disable a user and ensure no errors are thrown during propagation
+    const testUser = await prisma.user.create({
+      data: {
+        name: "Sync Test User",
+        email: `synctest-${Date.now()}@test.com`,
+        passwordHash: "hash",
+        organizationId: testOrg.id,
+      }
+    });
+
+    const res = await fetch(`${url}/api/users/${testUser.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "DISABLED" }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    const body = await res.json() as any;
+    assert.strictEqual(body.data.status, "DISABLED");
   });
 
   // Clean up

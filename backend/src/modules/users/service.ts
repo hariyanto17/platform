@@ -198,6 +198,9 @@ export const updateUserStatus = async (adminUserId: string, id: string, status: 
     });
   }
 
+  const { propagateUserSyncAll } = require("../../utils/ssoSync");
+  await propagateUserSyncAll(id);
+
   const action = status === "ACTIVE" ? "USER_ENABLED" : "USER_DISABLED";
   await logActivity(adminUserId, action, "User", updated.id, { email: updated.email });
   return updated;

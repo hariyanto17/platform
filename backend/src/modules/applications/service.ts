@@ -169,10 +169,19 @@ export const exchangeLaunchCode = async (rawCode: string, appCode: string) => {
       throw new AppError("FORBIDDEN", `Access has been revoked for application: ${appCode}`);
     }
 
-    await tx.applicationLaunchCode.update({
-      where: { id: launchCode.id },
-      data: { usedAt: new Date() },
+    const updateResult = await tx.applicationLaunchCode.updateMany({
+      where: {
+        id: launchCode.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
     });
+
+    if (updateResult.count === 0) {
+      throw new AppError("UNAUTHORIZED", "Launch code has already been used");
+    }
 
     return launchCode;
   });
