@@ -5,6 +5,9 @@ import {
   getDashboardOperationsHandler,
   getDashboardActivityHandler,
   getDashboardTransactionsHandler,
+  getDashboardAnalyticsHandler,
+  getDashboardReportHandler,
+  logReportExportHandler,
 } from "./controller";
 import { authenticate, requirePermission } from "../../middleware/authMiddleware";
 
@@ -37,5 +40,29 @@ router.get(
   requirePermission("platform.dashboard.view"),
   catchAsync(getDashboardTransactionsHandler)
 );
+
+router.get(
+  "/analytics",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getDashboardAnalyticsHandler)
+);
+
+router.get(
+  "/reports/summary",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getDashboardReportHandler)
+);
+
+router.post(
+  "/reports/export",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(logReportExportHandler)
+);
+
+import alertsRouter from "../alerts/router";
+router.use("/alerts", alertsRouter);
 
 export default router;

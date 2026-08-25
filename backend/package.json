@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node -r tsconfig-paths/register dist/backend/src/server.js",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "seed:uat": "ts-node -r tsconfig-paths/register prisma/uatSeed.ts",
     "format": "prisma format",
     "push": "prisma db push",
     "pull": "prisma db pull",

@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery, BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query/react";
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050",
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
   credentials: "include", // Ensure session cookies are sent
 });
 
@@ -34,6 +34,6 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["User", "Settings"],
+  tagTypes: ["User", "Settings", "Organization", "Application", "ExecutiveAlerts", "Security"],
   endpoints: () => ({}),
 });

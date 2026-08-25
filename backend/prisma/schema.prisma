@@ -12,7 +12,7 @@ enum UserStatus {
   DISABLED
 }
 
-enum ApplicationStatus {
+enum OrganizationStatus {
   ACTIVE
   DISABLED
 }
@@ -20,10 +20,13 @@ enum ApplicationStatus {
 model Organization {
   id                  String                  @id @default(uuid())
   name                String                  @unique
+  code                String                  @unique
+  status              OrganizationStatus      @default(ACTIVE)
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
   users               User[]
   applicationAccesses UserApplicationAccess[]
+  applications        OrganizationApplication[]
 }
 
 model User {
@@ -45,17 +48,24 @@ model User {
   @@index([organizationId])
 }
 
+enum ApplicationStatus {
+  ACTIVE
+  DISABLED
+}
+
 model Application {
   id                  String                  @id @default(uuid())
   code                String                  @unique // e.g. "PLATFORM", "TICKETING", "CONCESSION"
   name                String
   description         String?
   status              ApplicationStatus       @default(ACTIVE)
+  launchEnabled       Boolean                 @default(true)
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
   roles               Role[]
   permissions         Permission[]
   applicationAccesses UserApplicationAccess[]
+  organizations       OrganizationApplication[]
 
   @@index([status])
 }
@@ -144,14 +154,26 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model AppSetting {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  key         String
+  value       String
+  valueType   String   @default("STRING") // STRING, INTEGER, BOOLEAN, DECIMAL, JSON
+  category    String   @default("GENERAL") // GENERAL, SECURITY, SESSION, APPLICATION, FEATURE, GOVERNANCE
+  scope       String   @default("GLOBAL") // GLOBAL, APPLICATION, ORGANIZATION
+  scopeId     String   @default("")
+  description String?
+  isSensitive Boolean  @default(false)
+  isEditable  Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([key, scope, scopeId])
 }
 
 model ApplicationLaunchCode {
@@ -169,3 +191,56 @@ model ApplicationLaunchCode {
   @@index([applicationCode])
   @@index([expiresAt])
 }
+
+model OrganizationApplication {
+  id             String            @id @default(uuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  applicationId  String
+  application    Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  status         ApplicationStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, applicationId])
+  @@index([organizationId])
+  @@index([applicationId])
+}
+
+enum AlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model ExecutiveAlert {
+  id              String        @id @default(uuid())
+  fingerprint     String
+  severity        AlertSeverity
+  category        String
+  title           String
+  description     String
+  source          String
+  applicationCode String?
+  status          AlertStatus   @default(OPEN)
+  detectedAt      DateTime      @default(now())
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([fingerprint])
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+}
+

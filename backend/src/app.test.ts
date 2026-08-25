@@ -22,7 +22,11 @@ test("API Test Suite", async (t) => {
 
   // Create clean test organization and users
   const testOrg = await prisma.organization.create({
-    data: { name: `Test Org-${Date.now()}` },
+    data: {
+      name: `Test Org-${Date.now()}`,
+      code: `TEST-ORG-${Date.now()}`,
+      status: "ACTIVE",
+    },
   });
 
   const testPassword = "SecurePassword123!";
@@ -50,7 +54,35 @@ test("API Test Suite", async (t) => {
 
   // Assign application access to active user
   const appPlatform = await prisma.application.findUnique({ where: { code: "PLATFORM" } });
+  const appConcession = await prisma.application.findUnique({ where: { code: "CONCESSION" } });
+  const appTicketing = await prisma.application.findUnique({ where: { code: "TICKETING" } });
   const roleAdmin = await prisma.role.findUnique({ where: { code: "PLATFORM_ADMINISTRATOR" } });
+  if (roleAdmin) {
+    const requiredPerms = [
+      "platform.organizations.view",
+      "platform.organizations.manage",
+      "platform.organization_applications.manage",
+      "platform.applications.view",
+      "platform.applications.manage"
+    ];
+    for (const code of requiredPerms) {
+      let perm = await prisma.permission.findUnique({ where: { code } });
+      if (!perm) {
+        perm = await prisma.permission.create({
+          data: {
+            code,
+            name: code.split('.').join(' '),
+            applicationCode: "PLATFORM"
+          }
+        });
+      }
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: roleAdmin.id, permissionId: perm.id } },
+        update: {},
+        create: { roleId: roleAdmin.id, permissionId: perm.id }
+      });
+    }
+  }
   if (appPlatform && roleAdmin) {
     await prisma.userApplicationAccess.create({
       data: {
@@ -59,6 +91,23 @@ test("API Test Suite", async (t) => {
         applicationCode: "PLATFORM",
         roleId: roleAdmin.id,
       },
+    });
+  }
+
+  // Seed organization mapping values for tests
+  if (appPlatform) {
+    await prisma.organizationApplication.create({
+      data: { organizationId: testOrg.id, applicationId: appPlatform.id, status: "ACTIVE" },
+    });
+  }
+  if (appConcession) {
+    await prisma.organizationApplication.create({
+      data: { organizationId: testOrg.id, applicationId: appConcession.id, status: "ACTIVE" },
+    });
+  }
+  if (appTicketing) {
+    await prisma.organizationApplication.create({
+      data: { organizationId: testOrg.id, applicationId: appTicketing.id, status: "ACTIVE" },
     });
   }
 
@@ -830,6 +879,363 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(idorRes.status, 403);
   });
 
+  await t.test("Phase 7E Organization & Application Management", async () => {
+    const loginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const cookie = loginRes.headers.get("set-cookie") || "";
+
+    // 1. GET /api/organizations
+    const listRes = await fetch(`${url}/api/organizations`, { headers: { cookie } });
+    assert.strictEqual(listRes.status, 200);
+    const listBody = await listRes.json() as any;
+    assert.ok(listBody.data.length >= 1);
+    assert.ok(listBody.meta.pagination.total >= 1);
+
+    // 2. POST /api/organizations (Create)
+    const newOrgCode = `ORG-${Date.now()}`;
+    const createRes = await fetch(`${url}/api/organizations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: `Dynamic Org ${Date.now()}`,
+        code: newOrgCode,
+        status: "ACTIVE",
+      }),
+    });
+    assert.strictEqual(createRes.status, 201);
+    const createBody = await createRes.json() as any;
+    const newOrgId = createBody.data.id;
+    assert.strictEqual(createBody.data.code, newOrgCode.toUpperCase());
+
+    // 3. POST /api/organizations duplicate checks
+    const duplicateRes = await fetch(`${url}/api/organizations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        name: `Dynamic Org ${Date.now()}`,
+        code: newOrgCode,
+        status: "ACTIVE",
+      }),
+    });
+    assert.strictEqual(duplicateRes.status, 409);
+
+    // 4. GET /api/organizations/:id (Detail)
+    const detailRes = await fetch(`${url}/api/organizations/${newOrgId}`, { headers: { cookie } });
+    assert.strictEqual(detailRes.status, 200);
+    const detailBody = await detailRes.json() as any;
+    assert.strictEqual(detailBody.data.code, newOrgCode.toUpperCase());
+
+    // 5. PATCH /api/organizations/:id (Update status)
+    const updateRes = await fetch(`${url}/api/organizations/${newOrgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        status: "DISABLED",
+      }),
+    });
+    assert.strictEqual(updateRes.status, 200);
+    const updateBody = await updateRes.json() as any;
+    assert.strictEqual(updateBody.data.status, "DISABLED");
+
+    // Re-enable org
+    await fetch(`${url}/api/organizations/${newOrgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "ACTIVE" }),
+    });
+
+    // 6. Organization-Application Mappings
+    const mapRes = await fetch(`${url}/api/organizations/${newOrgId}/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        applicationCode: "CONCESSION",
+      }),
+    });
+    assert.strictEqual(mapRes.status, 201);
+
+    const mapDuplicateRes = await fetch(`${url}/api/organizations/${newOrgId}/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        applicationCode: "CONCESSION",
+      }),
+    });
+    assert.strictEqual(mapDuplicateRes.status, 409);
+
+    const unmapRes = await fetch(`${url}/api/organizations/${newOrgId}/applications/CONCESSION`, {
+      method: "DELETE",
+      headers: { cookie },
+    });
+    assert.strictEqual(unmapRes.status, 200);
+
+    // 7. GET /api/applications (List Applications)
+    const appsListRes = await fetch(`${url}/api/applications`, { headers: { cookie } });
+    assert.strictEqual(appsListRes.status, 200);
+    const appsListBody = await appsListRes.json() as any;
+    assert.ok(appsListBody.data.length >= 2);
+
+    // 8. GET /api/applications/:code (Detail Application)
+    const appDetailRes = await fetch(`${url}/api/applications/CONCESSION`, { headers: { cookie } });
+    assert.strictEqual(appDetailRes.status, 200);
+    const appDetailBody = await appDetailRes.json() as any;
+    assert.strictEqual(appDetailBody.data.code, "CONCESSION");
+
+    // 9. PATCH /api/applications/:code/status (Update Application status)
+    const appStatusRes = await fetch(`${url}/api/applications/CONCESSION/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({
+        status: "ACTIVE",
+        launchEnabled: false,
+      }),
+    });
+    assert.strictEqual(appStatusRes.status, 200);
+    const appStatusBody = await appStatusRes.json() as any;
+    assert.strictEqual(appStatusBody.data.launchEnabled, false);
+
+    // Restore launchEnabled
+    await fetch(`${url}/api/applications/CONCESSION/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "ACTIVE", launchEnabled: true }),
+    });
+
+    // 10. Authorization checks (RBAC)
+    const guestRes = await fetch(`${url}/api/organizations`);
+    assert.strictEqual(guestRes.status, 401);
+
+    // 11. SSO Launch Validation checks
+    const ssoUserEmail = `sso-${Date.now()}@test.com`;
+    const ssoUser = await prisma.user.create({
+      data: {
+        name: "SSO User",
+        email: ssoUserEmail,
+        passwordHash: testPasswordHash,
+        organizationId: testOrg.id,
+        status: "ACTIVE",
+      },
+    });
+
+    const roleConcessionCashier = await prisma.role.findUnique({ where: { code: "CONCESSION_CASHIER" } });
+    await prisma.userApplicationAccess.create({
+      data: {
+        userId: ssoUser.id,
+        organizationId: testOrg.id,
+        applicationCode: "CONCESSION",
+        roleId: roleConcessionCashier!.id,
+      },
+    });
+
+    const ssoLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: ssoUserEmail, password: testPassword }),
+    });
+    const ssoCookie = ssoLoginRes.headers.get("set-cookie") || "";
+
+    const platformConcession = await prisma.application.findUnique({ where: { code: "CONCESSION" } });
+
+    await prisma.organizationApplication.update({
+      where: {
+        organizationId_applicationId: {
+          organizationId: testOrg.id,
+          applicationId: platformConcession!.id,
+        },
+      },
+      data: { status: "DISABLED" },
+    });
+
+    const launchFailRes = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie: ssoCookie },
+    });
+    assert.strictEqual(launchFailRes.status, 400);
+
+    await prisma.organizationApplication.update({
+      where: {
+        organizationId_applicationId: {
+          organizationId: testOrg.id,
+          applicationId: platformConcession!.id,
+        },
+      },
+      data: { status: "ACTIVE" },
+    });
+
+    const launchSuccessRes = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie: ssoCookie },
+    });
+    assert.strictEqual(launchSuccessRes.status, 200);
+
+    await prisma.application.update({
+      where: { code: "CONCESSION" },
+      data: { launchEnabled: false },
+    });
+
+    const launchDisabledRes = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie: ssoCookie },
+    });
+    assert.strictEqual(launchDisabledRes.status, 400);
+
+    await prisma.application.update({
+      where: { code: "CONCESSION" },
+      data: { launchEnabled: true },
+    });
+
+    await prisma.organization.update({
+      where: { id: testOrg.id },
+      data: { status: "DISABLED" },
+    });
+
+    const launchDisabledOrgRes = await fetch(`${url}/api/applications/CONCESSION/launch`, {
+      method: "POST",
+      headers: { cookie: ssoCookie },
+    });
+    assert.strictEqual(launchDisabledOrgRes.status, 400);
+
+    await prisma.organization.update({
+      where: { id: testOrg.id },
+      data: { status: "ACTIVE" },
+    });
+  });
+
+  await t.test("Phase 7F - Executive Analytics Endpoint Authorization and Graceful Outage Fallbacks", async () => {
+    const unauthRes = await fetch(`${url}/api/dashboard/analytics?startDate=2026-08-01&endDate=2026-08-07&compare=true`, {
+      method: "GET",
+    });
+    assert.strictEqual(unauthRes.status, 401);
+
+    const normUserEmail = `norm-${Date.now()}@test.com`;
+    await prisma.user.create({
+      data: {
+        name: "Normal User",
+        email: normUserEmail,
+        passwordHash: testPasswordHash,
+        organizationId: testOrg.id,
+        status: "ACTIVE",
+      },
+    });
+    const normLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normUserEmail, password: testPassword }),
+    });
+    const normCookie = normLoginRes.headers.get("set-cookie") || "";
+
+    const unprivRes = await fetch(`${url}/api/dashboard/analytics?startDate=2026-08-01&endDate=2026-08-07&compare=true`, {
+      method: "GET",
+      headers: { cookie: normCookie },
+    });
+    assert.strictEqual(unprivRes.status, 403);
+
+    // Login activeUser as admin
+    const adminLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const adminCookie = adminLoginRes.headers.get("set-cookie") || "";
+
+    const authRes = await fetch(`${url}/api/dashboard/analytics?startDate=2026-08-01&endDate=2026-08-07&compare=true`, {
+      method: "GET",
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(authRes.status, 200);
+
+    const body = (await authRes.json()) as any;
+    assert.strictEqual(body.status, "success");
+    assert.strictEqual(body.data.sources.ticketing, "UNAVAILABLE");
+    assert.strictEqual(body.data.sources.concession, "UNAVAILABLE");
+    assert.strictEqual(body.data.summary.revenue, null);
+
+    const badDateRes = await fetch(`${url}/api/dashboard/analytics?startDate=invalid&endDate=2026-08-07`, {
+      method: "GET",
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(badDateRes.status, 400);
+  });
+
+  await t.test("Phase 7G - Executive Report and Export Authorization, Validation, Outages, and Audits", async () => {
+    const adminLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const adminCookie = adminLoginRes.headers.get("set-cookie") || "";
+
+    const unauthRes = await fetch(`${url}/api/dashboard/reports/summary?startDate=2026-08-01&endDate=2026-08-07&compare=true`, {
+      method: "GET",
+    });
+    assert.strictEqual(unauthRes.status, 401);
+
+    const normUserEmail = `report-norm-${Date.now()}@test.com`;
+    await prisma.user.create({
+      data: {
+        name: "Normal User",
+        email: normUserEmail,
+        passwordHash: testPasswordHash,
+        organizationId: testOrg.id,
+        status: "ACTIVE",
+      },
+    });
+    const normLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normUserEmail, password: testPassword }),
+    });
+    const normCookie = normLoginRes.headers.get("set-cookie") || "";
+    const forbiddenRes = await fetch(`${url}/api/dashboard/reports/summary?startDate=2026-08-01&endDate=2026-08-07`, {
+      headers: { cookie: normCookie },
+    });
+    assert.strictEqual(forbiddenRes.status, 403);
+
+    const reportRes = await fetch(`${url}/api/dashboard/reports/summary?startDate=2026-08-01&endDate=2026-08-07&compare=true`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(reportRes.status, 200);
+    const reportBody = await reportRes.json() as any;
+    assert.strictEqual(reportBody.status, "success");
+    assert.ok(reportBody.data.period);
+    assert.ok(reportBody.data.summary);
+    assert.ok(reportBody.data.dailyTrend);
+    assert.ok(reportBody.data.contribution);
+
+    const excessiveRes = await fetch(`${url}/api/dashboard/reports/summary?startDate=2025-01-01&endDate=2026-08-01`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(excessiveRes.status, 400);
+
+    const reverseRes = await fetch(`${url}/api/dashboard/reports/summary?startDate=2026-08-07&endDate=2026-08-01`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(reverseRes.status, 400);
+
+    const exportRes = await fetch(`${url}/api/dashboard/reports/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: adminCookie,
+      },
+      body: JSON.stringify({
+        format: "PDF",
+        startDate: "2026-08-01",
+        endDate: "2026-08-07",
+      }),
+    });
+    assert.strictEqual(exportRes.status, 200);
+
+    const auditLogs = await prisma.auditLog.findMany({
+      where: { action: "EXECUTIVE_REPORT_EXPORTED" },
+    });
+    assert.ok(auditLogs.length >= 1);
+    assert.strictEqual(auditLogs[0].entityId, "PDF");
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({
@@ -837,7 +1243,12 @@ test("API Test Suite", async (t) => {
       email: { contains: "test.com" }
     },
   });
-  await prisma.organization.delete({
+  await prisma.organization.deleteMany({
+    where: {
+      code: { contains: "ORG-" }
+    }
+  });
+  await prisma.organization.deleteMany({
     where: { id: testOrg.id },
   });
 });

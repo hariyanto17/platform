@@ -14,6 +14,7 @@ import accessRouter from "./modules/access/router";
 import auditRouter from "./modules/auditLogs/router";
 import dashboardRouter from "./modules/dashboard/router";
 import settingsRouter from "./modules/settings/router";
+import securityRouter from "./modules/security/router";
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/access", accessRouter);
 app.use("/api/audit-logs", auditRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/security", securityRouter);
 
 // Global Error Handler Middleware
 app.use(errorHandler);

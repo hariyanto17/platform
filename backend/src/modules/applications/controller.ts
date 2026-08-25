@@ -65,3 +65,22 @@ export const getPlatformUserContextHandler = async (req: Request, res: Response)
   const result = await appsService.getPlatformUserContext(platformUserId, application.toString().toUpperCase());
   return responseHandler.ok(res, result, "Platform user context retrieved successfully");
 };
+
+export const updateApplicationStatusHandler = async (req: Request, res: Response) => {
+  const { code } = req.params;
+  const { status, launchEnabled } = req.body;
+
+  if (status !== undefined && status !== "ACTIVE" && status !== "DISABLED") {
+    throw new AppError("BAD_REQUEST", "Invalid status value");
+  }
+
+  const actorUserId = req.user!.id;
+  const app = await appsService.updateApplicationStatus(
+    code.toUpperCase(),
+    status,
+    launchEnabled,
+    actorUserId
+  );
+
+  return responseHandler.ok(res, app, "Application status updated successfully");
+};

@@ -633,32 +633,68 @@ export default function UnifiedExecutiveDashboard() {
             )}
           </div>
 
-          {/* Quick actions panel */}
+          {/* Quick actions & Ecosystem Configuration panel */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="space-y-4 text-left">
-              <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">Aksi Cepat</h2>
-              <Card>
-                <CardContent className="p-4 flex flex-col gap-2.5">
-                  {quickActions.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-text-muted select-none">
-                      Tidak ada aksi administratif yang tersedia.
+            <div className="space-y-6 text-left">
+              {/* Ecosystem Configuration */}
+              <div className="space-y-4">
+                <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">Konfigurasi Ekosistem</h2>
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-semibold text-text-secondary border-b border-border/60 pb-2">
+                      <span>Total Organisasi:</span>
+                      <span className="font-bold text-text-primary">
+                        {metrics?.totalOrgs ?? 0} ({metrics?.activeOrgs ?? 0} Aktif)
+                      </span>
                     </div>
-                  ) : (
-                    quickActions.map((action) => (
-                      <Link
-                        key={action.name}
-                        href={action.href}
-                        className="flex items-center justify-between p-3 rounded-lg border border-border/80 hover:bg-surface-secondary/40 hover:border-primary/20 transition-all group"
-                      >
-                        <span className="text-sm font-semibold text-text-primary group-hover:text-primary transition-colors">
-                          {action.name}
-                        </span>
-                        <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    <div className="flex justify-between items-center text-xs font-semibold text-text-secondary border-b border-border/60 pb-2">
+                      <span>Total Aplikasi:</span>
+                      <span className="font-bold text-text-primary">
+                        {metrics?.totalApps ?? 0} ({metrics?.activeApps ?? 0} Aktif)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Link href="/organizations" className="col-span-1">
+                        <Button variant="secondary" className="w-full text-center py-1 text-[11px] font-bold">
+                          Manage Orgs
+                        </Button>
                       </Link>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
+                      <Link href="/applications" className="col-span-1">
+                        <Button variant="secondary" className="w-full text-center py-1 text-[11px] font-bold">
+                          Manage Apps
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Aksi Cepat */}
+              <div className="space-y-4">
+                <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">Aksi Cepat</h2>
+                <Card>
+                  <CardContent className="p-4 flex flex-col gap-2.5">
+                    {quickActions.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-text-muted select-none">
+                        Tidak ada aksi administratif yang tersedia.
+                      </div>
+                    ) : (
+                      quickActions.map((action) => (
+                        <Link
+                          key={action.name}
+                          href={action.href}
+                          className="flex items-center justify-between p-3 rounded-lg border border-border/80 hover:bg-surface-secondary/40 hover:border-primary/20 transition-all group"
+                        >
+                          <span className="text-sm font-semibold text-text-primary group-hover:text-primary transition-colors">
+                            {action.name}
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                        </Link>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {/* Platform administrative log entries */}

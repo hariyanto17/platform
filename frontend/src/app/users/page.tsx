@@ -54,6 +54,7 @@ export default function UsersIndexPage() {
   });
 
   const { data: orgsResponse } = useListOrganizationsQuery();
+  const orgsListOptions = Array.isArray(orgsResponse?.data) ? orgsResponse.data : [];
   const { data: appsResponse } = useListApplicationsQuery();
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
 
@@ -224,7 +225,7 @@ export default function UsersIndexPage() {
             className="bg-surface border border-border rounded px-3 py-1.5 text-sm font-medium text-text-primary focus:outline-none focus:border-primary max-w-xs"
           >
             <option value="">Semua Organisasi</option>
-            {orgsResponse?.data?.map((org) => (
+            {orgsListOptions.map((org: { id: string; name: string }) => (
               <option key={org.id} value={org.id}>{org.name}</option>
             ))}
           </select>
@@ -324,7 +325,7 @@ export default function UsersIndexPage() {
               className="w-full bg-surface border border-border rounded px-3 py-2 text-sm font-medium text-text-primary focus:outline-none focus:border-primary"
             >
               <option value="">Pilih Organisasi...</option>
-              {orgsResponse?.data?.map((org) => (
+              {orgsListOptions.map((org: { id: string; name: string }) => (
                 <option key={org.id} value={org.id}>{org.name}</option>
               ))}
             </select>

@@ -6,22 +6,28 @@ import { logActivity } from "../../utils/activityLogger";
 export const listApplications = async () => {
   const apps = await prisma.application.findMany({
     orderBy: { code: "asc" },
+    include: {
+      _count: {
+        select: {
+          applicationAccesses: true,
+          organizations: true,
+        },
+      },
+    },
   });
 
-  // Calculate assigned users count per application
-  const mappedApps = await Promise.all(
-    apps.map(async (app) => {
-      const assignedUsersCount = await prisma.userApplicationAccess.count({
-        where: { applicationCode: app.code },
-      });
-      return {
-        ...app,
-        assignedUsersCount,
-      };
-    })
-  );
-
-  return mappedApps;
+  return apps.map((app) => ({
+    id: app.id,
+    code: app.code,
+    name: app.name,
+    description: app.description,
+    status: app.status,
+    launchEnabled: app.launchEnabled,
+    createdAt: app.createdAt,
+    updatedAt: app.updatedAt,
+    userCount: app._count.applicationAccesses,
+    organizationCount: app._count.organizations,
+  }));
 };
 
 export const getApplicationByCode = async (code: string) => {
@@ -35,11 +41,14 @@ export const getApplicationByCode = async (code: string) => {
           name: true,
         },
       },
-      permissions: {
+      organizations: {
+        include: {
+          organization: true,
+        },
+      },
+      _count: {
         select: {
-          id: true,
-          code: true,
-          name: true,
+          applicationAccesses: true,
         },
       },
     },
@@ -49,23 +58,38 @@ export const getApplicationByCode = async (code: string) => {
     return null;
   }
 
-  const assignedUsersCount = await prisma.userApplicationAccess.count({
-    where: { applicationCode: code },
-  });
-
   return {
-    ...app,
-    assignedUsersCount,
+    id: app.id,
+    code: app.code,
+    name: app.name,
+    description: app.description,
+    status: app.status,
+    launchEnabled: app.launchEnabled,
+    createdAt: app.createdAt,
+    updatedAt: app.updatedAt,
+    roles: app.roles,
+    organizations: app.organizations.map((o) => ({
+      id: o.organization.id,
+      name: o.organization.name,
+      code: o.organization.code,
+      status: o.organization.status,
+    })),
+    userCount: app._count.applicationAccesses,
   };
 };
 
 export const createLaunchCode = async (userId: string, appCode: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
+    include: { organization: true },
   });
 
   if (!user || user.status !== "ACTIVE") {
     throw new AppError("BAD_REQUEST", "User is disabled or does not exist");
+  }
+
+  if (user.organization.status !== "ACTIVE") {
+    throw new AppError("BAD_REQUEST", "Organization is disabled");
   }
 
   const app = await prisma.application.findUnique({
@@ -74,6 +98,23 @@ export const createLaunchCode = async (userId: string, appCode: string) => {
 
   if (!app || app.status !== "ACTIVE") {
     throw new AppError("BAD_REQUEST", "Target application is disabled or does not exist");
+  }
+
+  if (!app.launchEnabled) {
+    throw new AppError("BAD_REQUEST", "Target application launch availability is disabled");
+  }
+
+  const mapping = await prisma.organizationApplication.findUnique({
+    where: {
+      organizationId_applicationId: {
+        organizationId: user.organizationId,
+        applicationId: app.id,
+      },
+    },
+  });
+
+  if (!mapping || mapping.status !== "ACTIVE") {
+    throw new AppError("BAD_REQUEST", `Application is not available for organization: ${appCode}`);
   }
 
   const access = await prisma.userApplicationAccess.findUnique({
@@ -161,6 +202,29 @@ export const exchangeLaunchCode = async (rawCode: string, appCode: string) => {
       throw new AppError("UNAUTHORIZED", "User account is disabled");
     }
 
+    if (launchCode.user.organization.status !== "ACTIVE") {
+      throw new AppError("UNAUTHORIZED", "Organization is disabled");
+    }
+
+    const app = await tx.application.findUnique({
+      where: { code: appCode },
+    });
+    if (!app || app.status !== "ACTIVE" || !app.launchEnabled) {
+      throw new AppError("UNAUTHORIZED", "Target application is disabled or launch is disabled");
+    }
+
+    const mapping = await tx.organizationApplication.findUnique({
+      where: {
+        organizationId_applicationId: {
+          organizationId: launchCode.user.organizationId,
+          applicationId: app.id,
+        },
+      },
+    });
+    if (!mapping || mapping.status !== "ACTIVE") {
+      throw new AppError("UNAUTHORIZED", "Application is not available for organization");
+    }
+
     const userAccess = launchCode.user.applicationAccesses.find(
       (acc: any) => acc.applicationCode === appCode
     );
@@ -217,6 +281,7 @@ export const getPlatformUserContext = async (platformUserId: string, appCode: st
   const user = await prisma.user.findUnique({
     where: { id: platformUserId },
     include: {
+      organization: true,
       applicationAccesses: {
         where: { applicationCode: appCode },
         include: {
@@ -242,6 +307,31 @@ export const getPlatformUserContext = async (platformUserId: string, appCode: st
     throw new AppError("UNAUTHORIZED", "User account is disabled");
   }
 
+  if (user.organization.status !== "ACTIVE") {
+    throw new AppError("UNAUTHORIZED", "Organization is disabled");
+  }
+
+  const app = await prisma.application.findUnique({
+    where: { code: appCode },
+  });
+
+  if (!app || app.status !== "ACTIVE") {
+    throw new AppError("FORBIDDEN", `Application is disabled: ${appCode}`);
+  }
+
+  const mapping = await prisma.organizationApplication.findUnique({
+    where: {
+      organizationId_applicationId: {
+        organizationId: user.organizationId,
+        applicationId: app.id,
+      },
+    },
+  });
+
+  if (!mapping || mapping.status !== "ACTIVE") {
+    throw new AppError("FORBIDDEN", `Application is not available for organization: ${appCode}`);
+  }
+
   const access = user.applicationAccesses[0];
   if (!access) {
     throw new AppError("FORBIDDEN", `Access has been revoked for application: ${appCode}`);
@@ -258,4 +348,49 @@ export const getPlatformUserContext = async (platformUserId: string, appCode: st
       permissions,
     },
   };
+};
+
+export const updateApplicationStatus = async (
+  code: string,
+  status: "ACTIVE" | "DISABLED" | undefined,
+  launchEnabled: boolean | undefined,
+  actorUserId: string,
+) => {
+  return prisma.$transaction(async (tx) => {
+    const app = await tx.application.findUnique({
+      where: { code },
+    });
+
+    if (!app) {
+      throw new AppError("NOT_FOUND", "Aplikasi tidak ditemukan");
+    }
+
+    const updated = await tx.application.update({
+      where: { code },
+      data: {
+        status,
+        launchEnabled,
+      },
+    });
+
+    const isStatusChanged = status !== undefined && status !== app.status;
+    if (isStatusChanged) {
+      const auditAction = status === "ACTIVE" ? "APPLICATION_ENABLED" : "APPLICATION_DISABLED";
+      await tx.auditLog.create({
+        data: {
+          userId: actorUserId,
+          action: auditAction,
+          entity: "Application",
+          entityId: app.id,
+          payload: {
+            applicationId: app.id,
+            code,
+            status,
+          },
+        },
+      });
+    }
+
+    return updated;
+  });
 };

@@ -6,10 +6,19 @@ export interface ApplicationContext {
   code: string;
   name: string;
   description?: string;
-  assignedUsersCount?: number;
+  status: "ACTIVE" | "DISABLED";
+  launchEnabled: boolean;
+  userCount: number;
+  organizationCount: number;
 }
 
-export interface ApplicationDetail extends ApplicationContext {
+export interface ApplicationDetail {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  status: "ACTIVE" | "DISABLED";
+  launchEnabled: boolean;
   createdAt: string;
   updatedAt: string;
   roles: Array<{
@@ -17,20 +26,35 @@ export interface ApplicationDetail extends ApplicationContext {
     code: string;
     name: string;
   }>;
-  permissions: Array<{
+  organizations: Array<{
     id: string;
-    code: string;
     name: string;
+    code: string;
+    status: string;
   }>;
+  userCount: number;
 }
 
 export const applicationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listApplications: builder.query<ApiResponse<ApplicationContext[]>, void>({
       query: () => "/api/applications",
+      providesTags: ["Application"],
     }),
     getApplicationByCode: builder.query<ApiResponse<ApplicationDetail>, string>({
       query: (code) => `/api/applications/${code}`,
+      providesTags: (result, error, code) => [{ type: "Application" as const, id: code }],
+    }),
+    updateApplicationStatus: builder.mutation<ApiResponse<unknown>, { code: string; status?: string; launchEnabled?: boolean }>({
+      query: ({ code, ...body }) => ({
+        url: `/api/applications/${code}/status`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result, error, { code }) => [
+        { type: "Application" as const, id: code },
+        "Application",
+      ],
     }),
     launchApplication: builder.mutation<ApiResponse<{ code: string; application: string; expiresAt: string }>, string>({
       query: (code) => ({
@@ -41,4 +65,9 @@ export const applicationsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useListApplicationsQuery, useGetApplicationByCodeQuery, useLaunchApplicationMutation } = applicationsApi;
+export const {
+  useListApplicationsQuery,
+  useGetApplicationByCodeQuery,
+  useUpdateApplicationStatusMutation,
+  useLaunchApplicationMutation,
+} = applicationsApi;

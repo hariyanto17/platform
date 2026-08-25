@@ -1,186 +1,296 @@
 "use client";
 
-import React, { useState } from "react";
-import { useListOrganizationsQuery, useGetOrganizationByIdQuery } from "@/lib/api/organizationsApi";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import React, { useState, useEffect } from "react";
+import { useListOrganizationsQuery, useCreateOrganizationMutation, useUpdateOrganizationMutation, OrganizationItem } from "@/lib/api/organizationsApi";
+import { Table, Column } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Building2, Users, Monitor, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
+import { Search, Plus, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+
+interface PaginatedOrganizations {
+  items: OrganizationItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 export default function OrganizationsPage() {
-  const { data: orgsResponse, isLoading } = useListOrganizationsQuery();
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const orgs = orgsResponse?.data || [];
+  // Form states
+  const [createName, setCreateName] = useState("");
+  const [createCode, setCreateCode] = useState("");
+  const [createStatus, setCreateStatus] = useState("ACTIVE");
 
-  const handleOpenDetail = (id: string) => {
-    setSelectedOrgId(id);
-    setIsDetailOpen(true);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const { data: orgsResponse, isLoading, refetch } = useListOrganizationsQuery({
+    page,
+    limit: 10,
+    search: debouncedSearch || undefined,
+    status: status || undefined,
+  });
+
+  const [createOrg, { isLoading: isCreating }] = useCreateOrganizationMutation();
+  const [updateOrg, { isLoading: isUpdating }] = useUpdateOrganizationMutation();
+
+  const orgsList = (orgsResponse?.data && "items" in orgsResponse.data
+    ? (orgsResponse.data as PaginatedOrganizations).items
+    : (Array.isArray(orgsResponse?.data) ? orgsResponse.data : [])) as OrganizationItem[];
+
+  const pagination = orgsResponse?.data && "pagination" in orgsResponse.data
+    ? (orgsResponse.data as PaginatedOrganizations).pagination
+    : null;
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createName || !createCode) {
+      alert("Nama dan Kode wajib diisi");
+      return;
+    }
+    try {
+      await createOrg({
+        name: createName,
+        code: createCode,
+        status: createStatus,
+      }).unwrap();
+      setIsCreateOpen(false);
+      setCreateName("");
+      setCreateCode("");
+      setCreateStatus("ACTIVE");
+      refetch();
+    } catch (err: unknown) {
+      const errorMsg = err && typeof err === "object" && "data" in err
+        ? (err as { data?: { message?: string } }).data?.message
+        : "Gagal membuat organisasi";
+      alert(errorMsg);
+    }
   };
 
+  const handleToggleStatus = async (orgId: string, currentStatus: string) => {
+    const targetStatus = currentStatus === "ACTIVE" ? "DISABLED" : "ACTIVE";
+    const confirmMessage = targetStatus === "DISABLED"
+      ? "Menonaktifkan organisasi ini akan mencegah login dan SSO untuk seluruh anggotanya secara instan. Lanjutkan?"
+      : "Mengaktifkan kembali organisasi akan memulihkan seluruh login dan SSO anggotanya. Lanjutkan?";
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      await updateOrg({ id: orgId, status: targetStatus }).unwrap();
+      refetch();
+    } catch (err: unknown) {
+      const errorMsg = err && typeof err === "object" && "data" in err
+        ? (err as { data?: { message?: string } }).data?.message
+        : "Gagal mengubah status organisasi";
+      alert(errorMsg);
+    }
+  };
+
+  const columns: Column<OrganizationItem>[] = [
+    {
+      key: "name",
+      header: "Nama Organisasi",
+      render: (org) => (
+        <div className="flex flex-col text-left">
+          <span className="font-bold text-sm text-text-primary">{org.name}</span>
+          <span className="text-xs font-semibold text-text-muted mt-0.5">{org.id}</span>
+        </div>
+      ),
+    },
+    {
+      key: "code",
+      header: "Kode",
+      render: (org) => (
+        <span className="font-mono font-bold text-xs bg-surface border border-border px-2 py-1 rounded text-text-primary">
+          {org.code}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (org) => (
+        <Badge variant={org.status === "ACTIVE" ? "success" : "destructive"}>
+          {org.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "userCount",
+      header: "Pengguna",
+      render: (org) => <span className="font-semibold text-sm text-text-primary">{org.userCount}</span>,
+    },
+    {
+      key: "applicationCount",
+      header: "Aplikasi Mapped",
+      render: (org) => <span className="font-semibold text-sm text-text-primary">{org.applicationCount}</span>,
+    },
+    {
+      key: "actions",
+      header: "Aksi",
+      render: (org) => (
+        <div className="flex items-center gap-2 justify-end">
+          <Link href={`/organizations/${org.id}`}>
+            <Button variant="secondary" className="flex items-center gap-1 font-semibold text-xs py-1 px-3">
+              <Eye size={12} /> Detail
+            </Button>
+          </Link>
+          <Button
+            variant={org.status === "ACTIVE" ? "danger" : "primary"}
+            onClick={() => handleToggleStatus(org.id, org.status)}
+            disabled={isUpdating}
+            className="font-semibold text-xs py-1 px-3"
+          >
+            {org.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Manajemen Organisasi</h1>
-        <p className="text-sm text-text-muted">
-          Peta struktur tenant dan outlet bioskop terintegrasi.
-        </p>
+    <div className="space-y-6 text-left">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">Direktori Organisasi</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Centrally manage organizations, registered applications, and corporate visibility policies.
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2 font-semibold">
+          <Plus size={16} /> Tambah Organisasi
+        </Button>
       </div>
 
-      <Card>
-        {isLoading ? (
-          <div className="p-8 space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ) : orgs.length === 0 ? (
-          <EmptyState
-            title="Tidak Ada Organisasi Terdaftar"
-            description="Belum ada organisasi atau outlet yang dikonfigurasi saat ini."
+      {/* FILTERS PANEL */}
+      <div className="bg-surface-card border border-border rounded-xl p-4 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+          <Input
+            placeholder="Cari nama atau kode organisasi..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-surface font-medium text-sm text-text-primary focus:border-primary"
           />
+        </div>
+        <select
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+          className="bg-surface border border-border rounded-lg px-3 py-2 text-sm font-semibold text-text-primary focus:outline-none focus:border-primary"
+        >
+          <option value="">Semua Status</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="DISABLED">DISABLED</option>
+        </select>
+      </div>
+
+      {/* DIRECTORY TABLE */}
+      <div className="bg-surface-card border border-border rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="p-12 text-center text-sm font-medium text-text-muted">Memuat data organisasi...</div>
+        ) : orgsList.length === 0 ? (
+          <div className="p-12 text-center text-sm font-medium text-text-muted">Tidak ada organisasi ditemukan.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-surface-secondary border-b border-border">
-                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">Nama Outlet / Tenant</th>
-                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase">ID Unik</th>
-                  <th className="px-6 py-3.5 font-bold text-text-secondary select-none tracking-wider text-xs uppercase text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {orgs.map((org) => (
-                  <tr key={org.id} className="hover:bg-surface-secondary/40 transition-colors">
-                    <td className="px-6 py-4 text-text-primary font-medium">
-                      <div className="flex items-center gap-2.5">
-                        <Building2 className="w-5 h-5 text-primary" />
-                        <span className="font-semibold text-text-primary">{org.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-text-primary font-medium font-mono text-xs text-text-muted">
-                      {org.id}
-                    </td>
-                    <td className="px-6 py-4 text-text-primary font-medium text-right">
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleOpenDetail(org.id)}
-                      >
-                        Lihat Detail
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <Table columns={columns} data={orgsList} />
+
+            {/* PAGINATION PANEL */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="p-4 border-t border-border flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-muted">
+                  Menampilkan Halaman {pagination.page} dari {pagination.totalPages} ({pagination.total} total)
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="secondary"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="py-1 px-3 text-xs"
+                  >
+                    <ChevronLeft size={16} />Prev
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={page >= pagination.totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="py-1 px-3 text-xs"
+                  >
+                    Next<ChevronRight size={16} />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </Card>
+      </div>
 
-      {/* Organization Detail Modal */}
-      {selectedOrgId && (
-        <OrgDetailModal
-          isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
-          id={selectedOrgId}
-        />
-      )}
+      {/* CREATE DIALOG */}
+      <Dialog
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title="Tambah Organisasi"
+        description="Mendaftarkan entitas bioskop atau unit kerja baru ke kontrol panel secara terpusat."
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-text-secondary block mb-1">Nama Organisasi</label>
+            <Input
+              placeholder="e.g. Planet Cinema Makassar"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              className="bg-surface text-sm font-semibold text-text-primary focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-text-secondary block mb-1">Kode Organisasi (Unique)</label>
+            <Input
+              placeholder="e.g. PC-MAKASSAR"
+              value={createCode}
+              onChange={(e) => setCreateCode(e.target.value)}
+              className="bg-surface text-sm font-semibold text-text-primary focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-text-secondary block mb-1">Status Awal</label>
+            <select
+              value={createStatus}
+              onChange={(e) => setCreateStatus(e.target.value)}
+              className="w-full bg-surface border border-border rounded px-3 py-2 text-sm font-semibold text-text-primary focus:outline-none focus:border-primary"
+            >
+              <option value="ACTIVE">ACTIVE (Langsung Aktif)</option>
+              <option value="DISABLED">DISABLED (Nonaktif Sementara)</option>
+            </select>
+          </div>
+
+          <div className="pt-4 border-t border-border flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIsCreateOpen(false)} type="button">
+              Batal
+            </Button>
+            <Button type="submit" disabled={isCreating} className="font-semibold">
+              Simpan Organisasi
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
-  );
-}
-
-interface OrgDetailModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  id: string;
-}
-
-function OrgDetailModal({ isOpen, onClose, id }: OrgDetailModalProps) {
-  const { data: detailResponse, isLoading } = useGetOrganizationByIdQuery(id);
-  const org = detailResponse?.data;
-
-  return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={org ? `Detail Organisasi - ${org.name}` : "Memuat..."}>
-      {isLoading ? (
-        <div className="space-y-4 py-2">
-          <Skeleton className="h-8 w-1/2" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      ) : !org ? (
-        <div className="py-8 text-center text-sm text-text-muted">
-          Gagal memuat detail organisasi.
-        </div>
-      ) : (
-        <div className="space-y-6 py-2">
-          {/* Tenant Info */}
-          <div className="bg-surface-secondary p-4 rounded-xl border border-border flex items-start gap-3">
-            <Building2 className="w-6 h-6 text-primary shrink-0 mt-0.5" />
-            <div>
-              <div className="font-bold text-text-primary">{org.name}</div>
-              <div className="text-xs text-text-muted font-mono mt-1">Tenant ID: {org.id}</div>
-            </div>
-          </div>
-
-          {/* Enabled Applications */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2.5 flex items-center gap-1.5">
-              <Monitor className="w-4 h-4 text-text-muted" />
-              Aplikasi Aktif
-            </h3>
-            {org.enabledApplications && org.enabledApplications.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {org.enabledApplications.map((app) => (
-                  <Badge key={app.id} variant="primary" className="py-1 px-2.5">
-                    {app.name} ({app.code})
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-text-muted italic bg-surface-secondary p-3 rounded-lg border border-border">
-                Belum ada aplikasi yang terikat pada user organisasi ini.
-              </div>
-            )}
-          </div>
-
-          {/* Associated Users */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2.5 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-text-muted" />
-              Daftar Anggota User ({org.users?.length || 0})
-            </h3>
-            {org.users && org.users.length > 0 ? (
-              <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-surface-secondary">
-                {org.users.map((u) => (
-                  <div key={u.id} className="flex items-center justify-between p-3">
-                    <div>
-                      <div className="font-semibold text-sm text-text-primary">{u.name}</div>
-                      <div className="text-xs text-text-muted">{u.email}</div>
-                    </div>
-                    {u.status === "ACTIVE" ? (
-                      <Badge variant="success" className="flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        Aktif
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        Kunci
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-text-muted italic bg-surface-secondary p-3 rounded-lg border border-border">
-                Belum ada user yang terdaftar dalam organisasi ini.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </Dialog>
   );
 }

@@ -11,7 +11,7 @@ async function main() {
   const org = await prisma.organization.upsert({
     where: { name: "Planet Cinema" },
     update: {},
-    create: { name: "Planet Cinema" },
+    create: { name: "Planet Cinema", code: "PLANET-CINEMA", status: "ACTIVE" },
   });
   console.log(`- Organization seeded: ${org.name}`);
 
@@ -42,7 +42,10 @@ async function main() {
     { code: "platform.users.update", name: "Update user profile details", applicationCode: "PLATFORM" },
     { code: "platform.users.disable", name: "Block or disable user sessions", applicationCode: "PLATFORM" },
     { code: "platform.organizations.view", name: "View tenant settings", applicationCode: "PLATFORM" },
+    { code: "platform.organizations.manage", name: "Manage organization settings", applicationCode: "PLATFORM" },
     { code: "platform.applications.view", name: "View system integrations", applicationCode: "PLATFORM" },
+    { code: "platform.applications.manage", name: "Manage system integrations", applicationCode: "PLATFORM" },
+    { code: "platform.organization_applications.manage", name: "Manage organization application mapping", applicationCode: "PLATFORM" },
     { code: "platform.audit_logs.view", name: "Access security audit logs", applicationCode: "PLATFORM" },
     { code: "platform.access.manage", name: "Manage user application access", applicationCode: "PLATFORM" },
     { code: "platform.roles.view", name: "View role registry", applicationCode: "PLATFORM" },
@@ -103,7 +106,8 @@ async function main() {
     PLATFORM_ADMINISTRATOR: [
       "platform.dashboard.view", "platform.users.view", "platform.users.create",
       "platform.users.update", "platform.users.disable", "platform.organizations.view",
-      "platform.applications.view", "platform.audit_logs.view", "platform.access.manage",
+      "platform.organizations.manage", "platform.applications.view", "platform.applications.manage",
+      "platform.organization_applications.manage", "platform.audit_logs.view", "platform.access.manage",
       "platform.roles.view", "platform.permissions.view", "platform.settings.view",
       "platform.settings.update"
     ],
@@ -212,6 +216,26 @@ async function main() {
     });
   }
   console.log("- Admin application accesses mapped successfully");
+
+  // 7. Organization Application Mapping
+  for (const app of appsData) {
+    const appId = appsMap[app.code].id;
+    await prisma.organizationApplication.upsert({
+      where: {
+        organizationId_applicationId: {
+          organizationId: org.id,
+          applicationId: appId,
+        },
+      },
+      update: {},
+      create: {
+        organizationId: org.id,
+        applicationId: appId,
+        status: "ACTIVE",
+      },
+    });
+  }
+  console.log("- Organization application mappings seeded successfully");
 
   console.log("Database seeding completed!");
 }

@@ -3,6 +3,7 @@ import argon2 from "argon2";
 import { prisma } from "../../utils/prisma";
 import { AppError } from "../../utils/errorHandler";
 import { ILoginInput, ILoginResult } from "./interface";
+import { logActivity } from "../../utils/activityLogger";
 
 export const login = async (input: ILoginInput): Promise<ILoginResult> => {
   const user = await prisma.user.findUnique({
@@ -27,15 +28,22 @@ export const login = async (input: ILoginInput): Promise<ILoginResult> => {
 
   // Generic credential error to prevent email enumeration
   if (!user) {
+    const fallbackUser = await prisma.user.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+    const fallbackId = fallbackUser ? fallbackUser.id : "system-user-fallback-id";
+    await logActivity(fallbackId, "LOGIN_FAILED", "User", "unknown", { email: input.email.toLowerCase() });
     throw new AppError("UNAUTHORIZED", "Invalid email or password");
   }
 
   if (user.status === "DISABLED") {
+    await logActivity(user.id, "LOGIN_FAILED", "User", user.id, { email: user.email, reason: "ACCOUNT_DISABLED" });
     throw new AppError("UNAUTHORIZED", "User account is disabled");
   }
 
   const isPasswordValid = await argon2.verify(user.passwordHash, input.password);
   if (!isPasswordValid) {
+    await logActivity(user.id, "LOGIN_FAILED", "User", user.id, { email: user.email, reason: "INVALID_PASSWORD" });
     throw new AppError("UNAUTHORIZED", "Invalid email or password");
   }
 

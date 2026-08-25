@@ -12,7 +12,10 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
-  Film
+  Film,
+  TrendingUp,
+  AlertTriangle,
+  Shield
 } from "lucide-react";
 
 import { useGetMeQuery } from "@/lib/api/authApi";
@@ -44,7 +47,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Overview",
       items: [
         { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-      ],
+        { name: "Analytics", href: "/dashboard/analytics", icon: <TrendingUp className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: "Reports", href: "/dashboard/reports", icon: <History className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: "Alerts", href: "/dashboard/alerts", icon: <AlertTriangle className="w-5 h-5" />, permission: "platform.dashboard.view" },
+      ].filter(item => !item.permission || hasPermission(item.permission)),
     },
     {
       label: "Management",
@@ -59,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { name: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" />, permission: "platform.settings.view" },
         { name: "Audit Logs", href: "/audit-logs", icon: <History className="w-5 h-5" />, permission: "platform.audit_logs.view" },
+        { name: "Security & Compliance", href: "/dashboard/security", icon: <Shield className="w-5 h-5" />, permission: "platform.dashboard.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
     },
   ].filter(group => group.items.length > 0);
