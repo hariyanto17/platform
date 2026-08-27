@@ -549,7 +549,7 @@ export default function ReportsPage() {
     activeTab === "showtimes" ? schedulesLoading : productsLoading;
 
   return (
-    <div className="flex-1 space-y-6 p-6 min-w-0 bg-slate-950 text-slate-100">
+    <div className="flex-1 space-y-6 min-w-0 bg-slate-950 text-slate-100 rounded-2xl p-4 sm:p-6">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

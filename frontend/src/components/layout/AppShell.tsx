@@ -55,8 +55,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <Header onMenuClick={() => setIsMobileOpen(!isMobileOpen)} />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="w-full max-w-[1720px] mx-auto">
             {children}
           </div>
         </main>
