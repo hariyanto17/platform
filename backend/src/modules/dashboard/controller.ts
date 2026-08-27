@@ -105,3 +105,65 @@ export const logReportExportHandler = async (req: Request, res: Response) => {
   return responseHandler.ok(res, null, "Executive report export action logged successfully");
 };
 
+import { getMoviesReportSchema, getSchedulesReportSchema, getProductsReportSchema } from "./validation";
+
+export const getMoviesReportHandler = async (req: Request, res: Response) => {
+  const { error, value } = getMoviesReportSchema.validate(req.query);
+  if (error) {
+    throw new AppError("BAD_REQUEST", error.details[0].message);
+  }
+
+  const start = new Date(value.startDate);
+  const end = new Date(value.endDate);
+  if (end < start) {
+    throw new AppError("BAD_REQUEST", "endDate cannot be before startDate");
+  }
+
+  const result = await dashboardService.getMoviesReport(value);
+  return responseHandler.ok(res, result.data, "Movie performance report retrieved successfully", {
+    summary: result.summary,
+    pagination: result.pagination,
+    meta: result.meta,
+  });
+};
+
+export const getSchedulesReportHandler = async (req: Request, res: Response) => {
+  const { error, value } = getSchedulesReportSchema.validate(req.query);
+  if (error) {
+    throw new AppError("BAD_REQUEST", error.details[0].message);
+  }
+
+  const start = new Date(value.startDate);
+  const end = new Date(value.endDate);
+  if (end < start) {
+    throw new AppError("BAD_REQUEST", "endDate cannot be before startDate");
+  }
+
+  const result = await dashboardService.getSchedulesReport(value);
+  return responseHandler.ok(res, result.data, "Showtime performance report retrieved successfully", {
+    summary: result.summary,
+    pagination: result.pagination,
+    meta: result.meta,
+  });
+};
+
+export const getProductsReportHandler = async (req: Request, res: Response) => {
+  const { error, value } = getProductsReportSchema.validate(req.query);
+  if (error) {
+    throw new AppError("BAD_REQUEST", error.details[0].message);
+  }
+
+  const start = new Date(value.startDate);
+  const end = new Date(value.endDate);
+  if (end < start) {
+    throw new AppError("BAD_REQUEST", "endDate cannot be before startDate");
+  }
+
+  const result = await dashboardService.getProductsReport(value);
+  return responseHandler.ok(res, result.data, "Product performance report retrieved successfully", {
+    summary: result.summary,
+    pagination: result.pagination,
+    meta: result.meta,
+  });
+};
+

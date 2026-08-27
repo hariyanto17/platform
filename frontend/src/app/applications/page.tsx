@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Tv2, Users, Building2, Play, Eye, Settings } from "lucide-react";
+import { useToast } from "@/providers/ToastProvider";
 import Link from "next/link";
 
 export default function ApplicationsCatalogPage() {
+  const { toast } = useToast();
   const { data: appsResponse, isLoading, refetch } = useListApplicationsQuery();
   const apps = appsResponse?.data || [];
 
@@ -31,11 +33,12 @@ export default function ApplicationsCatalogPage() {
       }).unwrap();
       setIsStatusModalOpen(false);
       refetch();
+      toast.success(`Kebijakan aplikasi ${targetAppCode} berhasil diperbarui.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal memperbarui status aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal memperbarui status aplikasi");
     }
   };
 
@@ -52,14 +55,17 @@ export default function ApplicationsCatalogPage() {
       }
 
       if (appUrl) {
+        toast.info(`Meluncurkan sesi SSO untuk aplikasi ${code}...`);
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.assign(`${appUrl}/sso/callback?code=${launchCode}`);
+      } else {
+        toast.error(`URL tujuan aplikasi ${code} tidak ditemukan.`);
       }
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
-        : "Gagal meluncurkan aplikasi. Periksa pemetaan otonom organisasi Anda.";
-      alert(errorMsg);
+        : "Gagal meluncurkan aplikasi. Periksa hak akses dan pemetaan organisasi Anda.";
+      toast.error(errorMsg || "Gagal meluncurkan aplikasi.");
     }
   };
 
@@ -123,32 +129,34 @@ export default function ApplicationsCatalogPage() {
                 </CardContent>
               </div>
 
-              <div className="p-6 border-t border-border bg-surface/50 grid grid-cols-3 gap-2">
+              <div className="p-4 border-t border-border bg-surface/50 grid grid-cols-3 gap-2">
                 <Link href={`/applications/${app.code}`} className="col-span-1">
-                  <Button variant="secondary" className="w-full font-semibold text-xs py-1 px-3 flex items-center justify-center gap-1">
-                    <Eye size={12} /> Detail
+                  <Button variant="secondary" size="sm" className="w-full">
+                    <Eye className="w-3.5 h-3.5 shrink-0" /> Detail
                   </Button>
                 </Link>
 
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={() => {
                     setTargetAppCode(app.code);
                     setTargetStatus(app.status);
                     setTargetLaunchEnabled(app.launchEnabled);
                     setIsStatusModalOpen(true);
                   }}
-                  className="col-span-1 font-semibold text-xs py-1 px-3 flex items-center justify-center gap-1"
+                  className="col-span-1"
                 >
-                  <Settings size={12} /> Status
+                  <Settings className="w-3.5 h-3.5 shrink-0" /> Status
                 </Button>
 
                 <Button
                   disabled={app.status !== "ACTIVE" || !app.launchEnabled || isLaunching}
                   onClick={() => handleLaunch(app.code)}
-                  className="col-span-1 font-semibold text-xs py-1 px-3 flex items-center justify-center gap-1"
+                  size="sm"
+                  className="col-span-1"
                 >
-                  <Play size={12} /> Launch
+                  <Play className="w-3.5 h-3.5 fill-current shrink-0" /> Launch
                 </Button>
               </div>
             </Card>

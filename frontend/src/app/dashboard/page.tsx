@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Table, Column } from "@/components/ui/Table";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { useToast } from "@/providers/ToastProvider";
 import {
   Users,
   Building2,
@@ -117,6 +119,7 @@ export default function UnifiedExecutiveDashboard() {
     }
   );
 
+  const { toast } = useToast();
   const { data: meResponse } = useGetMeQuery();
   const me = meResponse?.data;
 
@@ -128,6 +131,20 @@ export default function UnifiedExecutiveDashboard() {
   const txData = txResponse?.data;
 
   const handleLaunch = async (code: string) => {
+    // Check if user has explicit access in me context
+    const hasAccess = Boolean(
+      me?.applications?.some((app) => app.code === code) ||
+      me?.access?.some((acc) => acc.applicationCode === code)
+    );
+
+    if (!hasAccess) {
+      toast.warning(
+        `Akun Anda (${me?.email || "User"}) belum memiliki izin akses ke aplikasi ${code}. Silakan berikan izin di menu Pengguna / Izin Akses atau gunakan akun dengan role ${code}.`,
+        `Akses ${code} Dibatasi`
+      );
+      return;
+    }
+
     try {
       const res = await launchApp(code).unwrap();
       const launchCode = res.data.code;
@@ -140,12 +157,17 @@ export default function UnifiedExecutiveDashboard() {
       }
 
       if (appUrl) {
+        toast.info(`Membuka dan menyambungkan sesi SSO ke ${code}...`, "Meluncurkan Aplikasi");
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = `${appUrl}/sso/callback?code=${launchCode}`;
+      } else {
+        toast.error(`URL aplikasi untuk ${code} belum terkonfigurasi.`, "Konfigurasi Hilang");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert("Gagal meluncurkan aplikasi. Silakan coba lagi.");
+      const errorObj = err as { data?: { message?: string }; message?: string };
+      const errorMsg = errorObj.data?.message || errorObj.message || "Gagal meluncurkan aplikasi. Periksa status aplikasi dan hak akses Anda.";
+      toast.error(errorMsg, `Gagal Meluncurkan ${code}`);
     }
   };
 
@@ -228,7 +250,7 @@ export default function UnifiedExecutiveDashboard() {
           Terjadi kesalahan saat berkomunikasi dengan server otentikasi pusat. Silakan periksa koneksi Anda dan coba lagi.
         </p>
         <Button onClick={handleRefreshAll} variant="primary" className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4" /> Coba Lagi
+          <RefreshCw className="w-4 h-4 shrink-0" /> Coba Lagi
         </Button>
       </div>
     );
@@ -283,8 +305,8 @@ export default function UnifiedExecutiveDashboard() {
       key: "actions",
       header: "Aksi",
       render: (item) => (
-        <Button variant="ghost" onClick={() => setSelectedTx(item)} className="p-1 px-3 text-xs flex items-center gap-1">
-          <Info className="w-3.5 h-3.5" /> Detail
+        <Button variant="ghost" size="sm" onClick={() => setSelectedTx(item)}>
+          <Info className="w-3.5 h-3.5 shrink-0" /> Detail
         </Button>
       ),
     },
@@ -303,23 +325,26 @@ export default function UnifiedExecutiveDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted font-medium">Business Date:</span>
-            <input
-              type="date"
+            <DatePicker
               value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setTxPage(1);
+              onChange={(val) => {
+                if (val) {
+                  setSelectedDate(val);
+                  setTxPage(1);
+                }
               }}
-              className="bg-surface-secondary border border-border rounded px-2.5 py-1 text-sm font-semibold text-text-primary focus:outline-none focus:border-primary"
+              size="sm"
+              className="w-44"
             />
           </div>
           <Button
             onClick={handleRefreshAll}
             variant="secondary"
+            size="sm"
             disabled={isDashboardLoading || isDashboardFetching || isOpsLoading || isOpsFetching || isActivityFetching || isTxFetching}
             className="flex items-center gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${isDashboardFetching || isOpsFetching || isActivityFetching || isTxFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isDashboardFetching || isOpsFetching || isActivityFetching || isTxFetching ? "animate-spin" : ""}`} />
             Perbarui
           </Button>
         </div>
@@ -488,13 +513,25 @@ export default function UnifiedExecutiveDashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-border/40">
+                <div className="mt-4 pt-4 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-text-muted">Status Izin Akun:</span>
+                    {me?.access?.some((a) => a.applicationCode === "TICKETING") || me?.applications?.some((a) => a.code === "TICKETING") ? (
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        ● Akses Diberikan
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 font-semibold flex items-center gap-1">
+                        ○ Belum Ditugaskan
+                      </span>
+                    )}
+                  </div>
                   <Button
                     onClick={() => handleLaunch("TICKETING")}
                     disabled={isLaunching || ops?.ticketing?.status !== "CONNECTED"}
                     className="w-full flex items-center justify-center gap-2"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                     Buka Aplikasi Tiketing (SSO)
                   </Button>
                 </div>
@@ -537,13 +574,25 @@ export default function UnifiedExecutiveDashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-border/40">
+                <div className="mt-4 pt-4 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-text-muted">Status Izin Akun:</span>
+                    {me?.access?.some((a) => a.applicationCode === "CONCESSION") || me?.applications?.some((a) => a.code === "CONCESSION") ? (
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        ● Akses Diberikan
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 font-semibold flex items-center gap-1">
+                        ○ Belum Ditugaskan
+                      </span>
+                    )}
+                  </div>
                   <Button
                     onClick={() => handleLaunch("CONCESSION")}
                     disabled={isLaunching || ops?.concession?.status !== "CONNECTED"}
                     className="w-full flex items-center justify-center gap-2"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                     Buka Aplikasi Konsesi (SSO)
                   </Button>
                 </div>

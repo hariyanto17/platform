@@ -27,9 +27,11 @@ import {
   ArrowLeft,
   Plus
 } from "lucide-react";
+import { useToast } from "@/providers/ToastProvider";
 import Link from "next/link";
 
 export default function UserDetailPage() {
+  const { toast } = useToast();
   const { id } = useParams() as { id: string };
 
   const { data: userResponse, isLoading, refetch } = useGetUserQuery(id, {
@@ -46,7 +48,7 @@ export default function UserDetailPage() {
   // Modals state
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
-  const [selectedAppCode, setSelectedAppCode] = useState<"CONCESSION" | "TICKETING">("CONCESSION");
+  const [selectedAppCode, setSelectedAppCode] = useState<"TICKETING" | "CONCESSION">("TICKETING");
   const [selectedRole, setSelectedRole] = useState("");
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -63,17 +65,18 @@ export default function UserDetailPage() {
       await updateStatus({ id, status: targetStatus }).unwrap();
       setIsStatusModalOpen(false);
       refetch();
+      toast.success(`Status akun berhasil diubah menjadi ${targetStatus}.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal mengubah status pengguna";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal mengubah status pengguna");
     }
   };
 
   const handleGrantAccess = async () => {
     if (!selectedRole) {
-      alert("Silakan pilih role");
+      toast.warning("Silakan tentukan role yang ingin diberikan.");
       return;
     }
     try {
@@ -85,11 +88,12 @@ export default function UserDetailPage() {
       setIsGrantModalOpen(false);
       setSelectedRole("");
       refetch();
+      toast.success(`Akses aplikasi ${selectedAppCode} berhasil diberikan.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal memberikan akses aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal memberikan akses aplikasi");
     }
   };
 
@@ -102,11 +106,12 @@ export default function UserDetailPage() {
       }).unwrap();
       setIsRoleModalOpen(false);
       refetch();
+      toast.success(`Role aplikasi ${targetAppCode} berhasil diubah.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal mengubah role aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal mengubah role aplikasi");
     }
   };
 
@@ -118,11 +123,12 @@ export default function UserDetailPage() {
       }).unwrap();
       setIsRevokeModalOpen(false);
       refetch();
+      toast.success(`Akses aplikasi ${revokeAppCode} berhasil dicabut.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal mencabut akses aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal mencabut akses aplikasi");
     }
   };
 
@@ -139,12 +145,17 @@ export default function UserDetailPage() {
       }
 
       if (appUrl) {
+        toast.info(`Meluncurkan sesi SSO untuk aplikasi ${code}...`);
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.assign(`${appUrl}/sso/callback?code=${launchCode}`);
+      } else {
+        toast.error(`URL aplikasi untuk ${code} belum terkonfigurasi.`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert("Gagal meluncurkan aplikasi.");
+      const errorObj = err as { data?: { message?: string }; message?: string };
+      const errorMsg = errorObj.data?.message || errorObj.message || "Gagal meluncurkan aplikasi SSO.";
+      toast.error(errorMsg, `Gagal Meluncurkan ${code}`);
     }
   };
 

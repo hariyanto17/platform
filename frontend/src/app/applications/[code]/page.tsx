@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Table, Column } from "@/components/ui/Table";
 import { Tv2, ShieldAlert, Shield, ArrowLeft, Settings, Eye, Building2, Key } from "lucide-react";
+import { useToast } from "@/providers/ToastProvider";
 import Link from "next/link";
 
 export default function ApplicationDetailPage() {
+  const { toast } = useToast();
   const { code } = useParams() as { code: string };
 
   const { data: appResponse, isLoading, refetch } = useGetApplicationByCodeQuery(code, {
@@ -49,11 +51,12 @@ export default function ApplicationDetailPage() {
       }).unwrap();
       setIsPolicyModalOpen(false);
       refetch();
+      toast.success(`Kebijakan aplikasi ${code} berhasil diperbarui.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal memperbarui kebijakan aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal memperbarui kebijakan aplikasi");
     }
   };
 
@@ -109,8 +112,8 @@ export default function ApplicationDetailPage() {
       render: (org) => (
         <div className="flex justify-end">
           <Link href={`/organizations/${org.id}`}>
-            <Button variant="secondary" className="font-semibold text-xs py-1 px-3 flex items-center gap-1">
-              <Eye size={12} /> Kelola Pemetaan
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Eye className="w-3.5 h-3.5 shrink-0" /> Kelola Pemetaan
             </Button>
           </Link>
         </div>
@@ -123,8 +126,8 @@ export default function ApplicationDetailPage() {
       {/* BACK NAVIGATION */}
       <div className="flex items-center gap-4">
         <Link href="/applications">
-          <Button variant="secondary" className="flex items-center gap-1 font-semibold py-1 px-3 text-xs">
-            <ArrowLeft size={16} /> Kembali
+          <Button variant="secondary" size="sm" className="gap-1.5">
+            <ArrowLeft className="w-4 h-4 shrink-0" /> Kembali
           </Button>
         </Link>
       </div>
@@ -134,7 +137,7 @@ export default function ApplicationDetailPage() {
         <Card className="lg:col-span-2 bg-surface-card border border-border">
           <CardHeader className="flex flex-row items-center gap-4 border-b border-border pb-4">
             <div className="p-3 rounded-lg bg-surface border border-border">
-              <Tv2 className="h-6 w-6 text-primary" />
+              <Tv2 className="h-6 w-6 text-primary shrink-0" />
             </div>
             <div className="flex-1 text-left">
               <span className="text-xs font-mono font-bold text-text-secondary bg-surface border border-border px-2 py-0.5 rounded">
@@ -153,10 +156,11 @@ export default function ApplicationDetailPage() {
               </div>
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={handleOpenPolicyModal}
-                className="font-semibold text-xs py-1 px-3 flex items-center gap-1 mt-1"
+                className="gap-1.5 mt-1"
               >
-                <Settings size={12} /> Ubah Kebijakan
+                <Settings className="w-3.5 h-3.5 shrink-0" /> Ubah Kebijakan
               </Button>
             </div>
           </CardHeader>

@@ -18,6 +18,7 @@ import {
   Shield
 } from "lucide-react";
 
+import { useTranslation } from "@/providers/LanguageProvider";
 import { useGetMeQuery } from "@/lib/api/authApi";
 
 export interface SidebarProps {
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile
 }) => {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { data: userResponse } = useGetMeQuery();
   const user = userResponse?.data || null;
 
@@ -44,28 +46,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navigationGroups = [
     {
-      label: "Overview",
+      label: t("nav.overview"),
       items: [
-        { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-        { name: "Analytics", href: "/dashboard/analytics", icon: <TrendingUp className="w-5 h-5" />, permission: "platform.dashboard.view" },
-        { name: "Reports", href: "/dashboard/reports", icon: <History className="w-5 h-5" />, permission: "platform.dashboard.view" },
-        { name: "Alerts", href: "/dashboard/alerts", icon: <AlertTriangle className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: t("nav.dashboard"), href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+        { name: t("nav.analytics"), href: "/dashboard/analytics", icon: <TrendingUp className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: t("nav.reports"), href: "/dashboard/reports", icon: <History className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: t("nav.alerts"), href: "/dashboard/alerts", icon: <AlertTriangle className="w-5 h-5" />, permission: "platform.dashboard.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
     },
     {
-      label: "Management",
+      label: t("users.title"),
       items: [
-        { name: "Users", href: "/users", icon: <Users className="w-5 h-5" />, permission: "platform.users.view" },
-        { name: "Organizations", href: "/organizations", icon: <Building2 className="w-5 h-5" />, permission: "platform.organizations.view" },
-        { name: "Applications", href: "/applications", icon: <Tv2 className="w-5 h-5" />, permission: "platform.applications.view" },
+        { name: t("nav.users"), href: "/users", icon: <Users className="w-5 h-5" />, permission: "platform.users.view" },
+        { name: t("nav.organizations"), href: "/organizations", icon: <Building2 className="w-5 h-5" />, permission: "platform.organizations.view" },
+        { name: t("nav.applications"), href: "/applications", icon: <Tv2 className="w-5 h-5" />, permission: "platform.applications.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
     },
     {
-      label: "System",
+      label: t("settings.title"),
       items: [
-        { name: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" />, permission: "platform.settings.view" },
-        { name: "Audit Logs", href: "/audit-logs", icon: <History className="w-5 h-5" />, permission: "platform.audit_logs.view" },
-        { name: "Security & Compliance", href: "/dashboard/security", icon: <Shield className="w-5 h-5" />, permission: "platform.dashboard.view" },
+        { name: t("nav.settings"), href: "/settings", icon: <Settings className="w-5 h-5" />, permission: "platform.settings.view" },
+        { name: t("nav.auditLogs"), href: "/audit-logs", icon: <History className="w-5 h-5" />, permission: "platform.audit_logs.view" },
+        { name: t("security.title"), href: "/dashboard/security", icon: <Shield className="w-5 h-5" />, permission: "platform.dashboard.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
     },
   ].filter(group => group.items.length > 0);

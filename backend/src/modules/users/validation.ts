@@ -4,7 +4,7 @@ export const createUserSchema = Joi.object({
   name: Joi.string().required().messages({
     "any.required": "Nama lengkap wajib diisi",
   }),
-  email: Joi.string().email().required().messages({
+  email: Joi.string().email({ tlds: { allow: false } }).required().messages({
     "string.email": "Format email tidak valid",
     "any.required": "Alamat email wajib diisi",
   }),
@@ -20,7 +20,7 @@ export const createUserSchema = Joi.object({
 
 export const updateUserSchema = Joi.object({
   name: Joi.string().optional(),
-  email: Joi.string().email().optional().messages({
+  email: Joi.string().email({ tlds: { allow: false } }).optional().messages({
     "string.email": "Format email tidak valid",
   }),
 });

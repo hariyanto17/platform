@@ -626,3 +626,181 @@ export const getDashboardReport = async (params: { startDate: string; endDate: s
   };
 };
 
+export const getMoviesReport = async (params: {
+  startDate: string;
+  endDate: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  movieId?: string;
+}) => {
+  const ticketingUrl = process.env.TICKETING_API_URL || "http://localhost:5011";
+  const apiKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
+
+  const queryParams = new URLSearchParams({
+    startDate: params.startDate,
+    endDate: params.endDate,
+    page: (params.page || 1).toString(),
+    limit: (params.limit || 20).toString(),
+    ...(params.search ? { search: params.search } : {}),
+    ...(params.movieId ? { movieId: params.movieId } : {}),
+  });
+
+  try {
+    const res = await fetch(`${ticketingUrl}/api/internal/reports/movies?${queryParams.toString()}`, {
+      headers: { "x-platform-internal-key": apiKey },
+      signal: AbortSignal.timeout(2000),
+    });
+
+    if (!res.ok) throw new Error(`Ticketing returned HTTP ${res.status}`);
+    const body = (await res.json()) as any;
+
+    return {
+      status: "success" as const,
+      data: body.data || [],
+      summary: body.meta?.summary || { totalItems: 0, totalRevenue: 0, totalTicketsSold: 0 },
+      pagination: body.meta?.pagination || { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "AVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  } catch (err) {
+    console.error("Ticketing movies report fetch failed", err);
+    return {
+      status: "partial" as const,
+      data: [],
+      summary: { totalItems: 0, totalRevenue: null, totalTicketsSold: null },
+      pagination: { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "UNAVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+        warning: "Downstream ticketing telemetry source is currently offline.",
+      },
+    };
+  }
+};
+
+export const getSchedulesReport = async (params: {
+  startDate: string;
+  endDate: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  movieId?: string;
+  studioId?: string;
+  showtimeId?: string;
+}) => {
+  const ticketingUrl = process.env.TICKETING_API_URL || "http://localhost:5011";
+  const apiKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
+
+  const queryParams = new URLSearchParams({
+    startDate: params.startDate,
+    endDate: params.endDate,
+    page: (params.page || 1).toString(),
+    limit: (params.limit || 20).toString(),
+    ...(params.search ? { search: params.search } : {}),
+    ...(params.movieId ? { movieId: params.movieId } : {}),
+    ...(params.studioId ? { studioId: params.studioId } : {}),
+    ...(params.showtimeId ? { showtimeId: params.showtimeId } : {}),
+  });
+
+  try {
+    const res = await fetch(`${ticketingUrl}/api/internal/reports/schedules?${queryParams.toString()}`, {
+      headers: { "x-platform-internal-key": apiKey },
+      signal: AbortSignal.timeout(2000),
+    });
+
+    if (!res.ok) throw new Error(`Ticketing returned HTTP ${res.status}`);
+    const body = (await res.json()) as any;
+
+    return {
+      status: "success" as const,
+      data: body.data || [],
+      summary: body.meta?.summary || { totalItems: 0, totalRevenue: 0, totalTicketsSold: 0, averageOccupancyRate: null },
+      pagination: body.meta?.pagination || { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "AVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  } catch (err) {
+    console.error("Ticketing schedules report fetch failed", err);
+    return {
+      status: "partial" as const,
+      data: [],
+      summary: { totalItems: 0, totalRevenue: null, totalTicketsSold: null, averageOccupancyRate: null },
+      pagination: { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "UNAVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+        warning: "Downstream ticketing telemetry source is currently offline.",
+      },
+    };
+  }
+};
+
+export const getProductsReport = async (params: {
+  startDate: string;
+  endDate: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  categoryId?: string;
+  productId?: string;
+}) => {
+  const concessionUrl = process.env.CONCESSION_API_URL || "http://localhost:5050";
+  const apiKey = process.env.PLATFORM_INTERNAL_API_KEY || "platform-internal-secret-key-123";
+
+  const queryParams = new URLSearchParams({
+    startDate: params.startDate,
+    endDate: params.endDate,
+    page: (params.page || 1).toString(),
+    limit: (params.limit || 20).toString(),
+    ...(params.search ? { search: params.search } : {}),
+    ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+    ...(params.productId ? { productId: params.productId } : {}),
+  });
+
+  try {
+    const res = await fetch(`${concessionUrl}/api/internal/reports/products?${queryParams.toString()}`, {
+      headers: { "x-platform-internal-key": apiKey },
+      signal: AbortSignal.timeout(2000),
+    });
+
+    if (!res.ok) throw new Error(`Concession returned HTTP ${res.status}`);
+    const body = (await res.json()) as any;
+
+    return {
+      status: "success" as const,
+      data: body.data || [],
+      summary: body.meta?.summary || { totalItems: 0, totalRevenue: 0, totalQuantitySold: 0 },
+      pagination: body.meta?.pagination || { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "AVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  } catch (err) {
+    console.error("Concession products report fetch failed", err);
+    return {
+      status: "partial" as const,
+      data: [],
+      summary: { totalItems: 0, totalRevenue: null, totalQuantitySold: null },
+      pagination: { total: 0, page: params.page || 1, limit: params.limit || 20, totalPages: 1 },
+      meta: {
+        period: { startDate: params.startDate, endDate: params.endDate },
+        source: "UNAVAILABLE" as const,
+        generatedAt: new Date().toISOString(),
+        warning: "Downstream concession telemetry source is currently offline.",
+      },
+    };
+  }
+};
+
+

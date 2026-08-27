@@ -27,8 +27,10 @@ import {
   Eye
 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/providers/ToastProvider";
 
 export default function OrganizationDetailPage() {
+  const { toast } = useToast();
   const { id } = useParams() as { id: string };
 
   const { data: orgResponse, isLoading, refetch } = useGetOrganizationByIdQuery(id, {
@@ -63,11 +65,12 @@ export default function OrganizationDetailPage() {
       await updateOrgStatus({ id, status: targetStatus }).unwrap();
       setIsStatusModalOpen(false);
       refetch();
+      toast.success(`Status organisasi berhasil diubah menjadi ${targetStatus}.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal mengubah status organisasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal mengubah status organisasi");
     }
   };
 
@@ -75,8 +78,10 @@ export default function OrganizationDetailPage() {
     try {
       if (mapAppAction === "MAP") {
         await mapApp({ organizationId: id, applicationCode: targetMapAppCode }).unwrap();
+        toast.success(`Aplikasi ${targetMapAppCode} berhasil dipetakan ke organisasi.`);
       } else {
         await unmapApp({ organizationId: id, applicationCode: targetMapAppCode }).unwrap();
+        toast.success(`Pemetaan aplikasi ${targetMapAppCode} berhasil dicabut.`);
       }
       setIsMapModalOpen(false);
       refetch();
@@ -84,7 +89,7 @@ export default function OrganizationDetailPage() {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal memproses pemetaan aplikasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal memproses pemetaan aplikasi");
     }
   };
 
@@ -260,20 +265,21 @@ export default function OrganizationDetailPage() {
                     </div>
                     <Button
                       variant={mapped ? "danger" : "primary"}
+                      size="sm"
                       onClick={() => {
                         setTargetMapAppCode(app.code);
                         setMapAppAction(mapped ? "UNMAP" : "MAP");
                         setIsMapModalOpen(true);
                       }}
-                      className="font-semibold text-xs py-1 px-3 flex items-center gap-1"
+                      className="gap-1.5 shrink-0"
                     >
                       {mapped ? (
                         <>
-                          <Unlink size={12} /> Hapus Pemetaan
+                          <Unlink className="w-3.5 h-3.5 shrink-0" /> Hapus Pemetaan
                         </>
                       ) : (
                         <>
-                          <LinkIcon size={12} /> Mendaftarkan Pemetaan
+                          <LinkIcon className="w-3.5 h-3.5 shrink-0" /> Daftarkan Pemetaan
                         </>
                       )}
                     </Button>

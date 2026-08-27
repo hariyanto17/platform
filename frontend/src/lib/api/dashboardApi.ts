@@ -209,6 +209,76 @@ export interface ReportExportPayload {
   applicationCode?: string;
 }
 
+export interface MoviePerformanceItem {
+  movieId: string;
+  movieTitle: string;
+  durationMinutes: number | null;
+  ticketsSold: number;
+  ticketsActive: number;
+  ticketsUsed: number;
+  grossRevenue: number;
+  refundAmount: number;
+  netRevenue: number;
+  averageTicketPrice: number | null;
+  revenueShare: number;
+}
+
+export interface ShowtimePerformanceItem {
+  showtimeId: string;
+  movieId: string;
+  movieTitle: string;
+  studioId: string;
+  studioName: string;
+  studioCode: string;
+  showDate: string;
+  startTime: string;
+  endTime: string | null;
+  ticketPrice: number;
+  totalSeats: number;
+  soldSeats: number;
+  usedSeats: number;
+  availableSeats: number;
+  occupancyRate: number | null;
+  revenue: number;
+}
+
+export interface ProductPerformanceItem {
+  productId: string;
+  productName: string;
+  categoryId: string | null;
+  categoryName: string;
+  quantitySold: number;
+  grossRevenue: number;
+  discountAmount: number;
+  taxAmount: number;
+  netRevenue: number;
+  averageSellingPrice: number | null;
+  revenueShare: number;
+}
+
+export interface DepartmentalReportParams {
+  startDate: string;
+  endDate: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  movieId?: string;
+  studioId?: string;
+  showtimeId?: string;
+  categoryId?: string;
+  productId?: string;
+}
+
+export interface DepartmentalReportResponse<T> {
+  data: T[];
+  meta: {
+    period: { startDate: string; endDate: string };
+    summary: Record<string, unknown>;
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+    meta?: { source: "AVAILABLE" | "UNAVAILABLE"; warning?: string };
+  };
+}
+
 export const dashboardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDashboardOverview: builder.query<ApiResponse<DashboardOverviewData>, void>({
@@ -238,6 +308,24 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashboardReport: builder.query<ApiResponse<DashboardReportData>, ReportQueryFilters>({
       query: (filters) => ({
         url: "/api/dashboard/reports/summary",
+        params: filters,
+      }),
+    }),
+    getMoviesReport: builder.query<ApiResponse<MoviePerformanceItem[]>, DepartmentalReportParams>({
+      query: (filters) => ({
+        url: "/api/dashboard/reports/movies",
+        params: filters,
+      }),
+    }),
+    getSchedulesReport: builder.query<ApiResponse<ShowtimePerformanceItem[]>, DepartmentalReportParams>({
+      query: (filters) => ({
+        url: "/api/dashboard/reports/schedules",
+        params: filters,
+      }),
+    }),
+    getProductsReport: builder.query<ApiResponse<ProductPerformanceItem[]>, DepartmentalReportParams>({
+      query: (filters) => ({
+        url: "/api/dashboard/reports/products",
         params: filters,
       }),
     }),
@@ -444,6 +532,9 @@ export const {
   useGetDashboardTransactionsQuery,
   useGetDashboardAnalyticsQuery,
   useGetDashboardReportQuery,
+  useGetMoviesReportQuery,
+  useGetSchedulesReportQuery,
+  useGetProductsReportQuery,
   useLogReportExportMutation,
   useGetDashboardAlertsQuery,
   useGetDashboardAlertSummaryQuery,

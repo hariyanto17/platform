@@ -31,3 +31,36 @@ export const exportReportSchema = Joi.object({
   applicationCode: Joi.string().optional(),
 });
 
+export const getMoviesReportSchema = Joi.object({
+  startDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("startDate must be in YYYY-MM-DD format").required(),
+  endDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("endDate must be in YYYY-MM-DD format").required(),
+  page: Joi.number().integer().min(1).optional().default(1),
+  limit: Joi.number().integer().min(1).max(100).optional().default(20),
+  search: Joi.string().allow("").optional(),
+  movieId: Joi.string().optional(),
+  organizationId: Joi.string().uuid().optional(),
+});
+
+export const getSchedulesReportSchema = Joi.object({
+  startDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("startDate must be in YYYY-MM-DD format").required(),
+  endDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("endDate must be in YYYY-MM-DD format").required(),
+  page: Joi.number().integer().min(1).optional().default(1),
+  limit: Joi.number().integer().min(1).max(100).optional().default(20),
+  search: Joi.string().allow("").optional(),
+  movieId: Joi.string().optional(),
+  studioId: Joi.string().optional(),
+  showtimeId: Joi.string().optional(),
+  organizationId: Joi.string().uuid().optional(),
+});
+
+export const getProductsReportSchema = Joi.object({
+  startDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("startDate must be in YYYY-MM-DD format").required(),
+  endDate: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).message("endDate must be in YYYY-MM-DD format").required(),
+  page: Joi.number().integer().min(1).optional().default(1),
+  limit: Joi.number().integer().min(1).max(100).optional().default(20),
+  search: Joi.string().allow("").optional(),
+  categoryId: Joi.string().optional(),
+  productId: Joi.string().optional(),
+  organizationId: Joi.string().uuid().optional(),
+});
+

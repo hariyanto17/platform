@@ -8,6 +8,9 @@ import {
   getDashboardAnalyticsHandler,
   getDashboardReportHandler,
   logReportExportHandler,
+  getMoviesReportHandler,
+  getSchedulesReportHandler,
+  getProductsReportHandler,
 } from "./controller";
 import { authenticate, requirePermission } from "../../middleware/authMiddleware";
 
@@ -60,6 +63,27 @@ router.post(
   authenticate,
   requirePermission("platform.dashboard.view"),
   catchAsync(logReportExportHandler)
+);
+
+router.get(
+  "/reports/movies",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getMoviesReportHandler)
+);
+
+router.get(
+  "/reports/schedules",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getSchedulesReportHandler)
+);
+
+router.get(
+  "/reports/products",
+  authenticate,
+  requirePermission("platform.dashboard.view"),
+  catchAsync(getProductsReportHandler)
 );
 
 import alertsRouter from "../alerts/router";

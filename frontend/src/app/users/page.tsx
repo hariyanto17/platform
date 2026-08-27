@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { UserContext } from "@/types/auth";
+import { useToast } from "@/providers/ToastProvider";
 
 export default function UsersIndexPage() {
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -69,7 +71,7 @@ export default function UsersIndexPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createName || !createEmail || !createPassword || !createOrgId) {
-      alert("Semua field wajib diisi");
+      toast.warning("Semua field wajib diisi");
       return;
     }
     try {
@@ -86,11 +88,12 @@ export default function UsersIndexPage() {
       setCreatePassword("");
       setCreateOrgId("");
       refetch();
+      toast.success("Pengguna berhasil dibuat");
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal membuat pengguna";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal membuat pengguna");
     }
   };
 
@@ -172,8 +175,8 @@ export default function UsersIndexPage() {
       header: "Aksi",
       render: (item) => (
         <Link href={`/users/${item.id}`}>
-          <Button variant="ghost" className="p-1 px-3 text-xs flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5" /> Detail
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <Eye className="w-3.5 h-3.5 shrink-0" /> Detail
           </Button>
         </Link>
       ),
@@ -191,7 +194,7 @@ export default function UsersIndexPage() {
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-1.5 shrink-0 self-start sm:self-center">
-          <Plus className="w-4 h-4" /> Tambah Pengguna
+          <Plus className="w-4 h-4 shrink-0" /> Tambah Pengguna
         </Button>
       </div>
 

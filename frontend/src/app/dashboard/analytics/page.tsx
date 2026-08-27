@@ -17,6 +17,7 @@ import {
   DollarSign, 
   AlertTriangle 
 } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function AnalyticsPage() {
   const [rangeType, setRangeType] = useState<string>("7d");
@@ -194,26 +195,28 @@ export default function AnalyticsPage() {
 
       {/* Custom range date-picker inputs */}
       {rangeType === "custom" && (
-        <div className="flex flex-wrap items-center gap-4 bg-slate-900/40 border border-slate-800 p-4 rounded-xl">
+        <div className="flex flex-wrap items-center gap-4 bg-surface-secondary/60 border border-border p-4 rounded-xl">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">Start Date:</span>
-            <input
-              type="date"
+            <span className="text-xs text-text-muted font-medium">Tanggal Mulai:</span>
+            <DatePicker
               value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              onChange={(val) => setCustomStart(val)}
+              size="sm"
+              placeholder="Pilih tanggal mulai..."
+              className="w-40"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">End Date:</span>
-            <input
-              type="date"
+            <span className="text-xs text-text-muted font-medium">Tanggal Akhir:</span>
+            <DatePicker
               value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              onChange={(val) => setCustomEnd(val)}
+              size="sm"
+              placeholder="Pilih tanggal akhir..."
+              className="w-40"
             />
           </div>
-          <div className="flex items-center gap-2 ml-4">
+          <div className="flex items-center gap-2 ml-2">
             <input
               type="checkbox"
               id="compareToggle"

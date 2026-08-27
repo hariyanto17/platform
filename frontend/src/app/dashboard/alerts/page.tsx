@@ -24,6 +24,7 @@ import {
   Building,
   Tv
 } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
 import * as d3 from "d3";
 
 export default function AlertsPage() {
@@ -393,21 +394,23 @@ export default function AlertsPage() {
         {/* Date Filters optional */}
         <div className="flex flex-wrap items-center gap-4 text-xs mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">From:</span>
-            <input
-              type="date"
+            <span className="text-text-muted font-medium">Dari:</span>
+            <DatePicker
               value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300 text-xs"
+              onChange={(val) => { setStartDate(val); setPage(1); }}
+              size="sm"
+              placeholder="Mulai..."
+              className="w-36"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">To:</span>
-            <input
-              type="date"
+            <span className="text-text-muted font-medium">Sampai:</span>
+            <DatePicker
               value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300 text-xs"
+              onChange={(val) => { setEndDate(val); setPage(1); }}
+              size="sm"
+              placeholder="Sampai..."
+              className="w-36"
             />
           </div>
         </div>

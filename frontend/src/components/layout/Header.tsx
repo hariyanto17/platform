@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Sun, Moon, Monitor, User, LogOut, ChevronDown } from "lucide-react";
+import { Menu, Sun, Moon, Monitor, User, LogOut, ChevronDown, Globe } from "lucide-react";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useTranslation, localeOptions } from "@/providers/LanguageProvider";
 import { useGetMeQuery, useLogoutMutation } from "@/lib/api/authApi";
 
 export interface HeaderProps {
@@ -14,13 +15,16 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { t, locale, setLocale } = useTranslation();
   const { data: userResponse } = useGetMeQuery();
   const user = userResponse?.data || null;
   const [triggerLogout] = useLogoutMutation();
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const themeRef = useRef<HTMLDivElement>(null);
+  const languageRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Close menus on click outside
@@ -28,6 +32,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const handleClickOutside = (event: MouseEvent) => {
       if (themeRef.current && !themeRef.current.contains(event.target as Node)) {
         setIsThemeOpen(false);
+      }
+      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
+        setIsLanguageOpen(false);
       }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
@@ -40,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   // Simple Breadcrumbs Builder
   const getBreadcrumbs = () => {
     const paths = pathname.split("/").filter(Boolean);
-    if (paths.length === 0) return [{ name: "Dashboard", href: "/", isLast: true }];
+    if (paths.length === 0) return [{ name: t("nav.dashboard"), href: "/", isLast: true }];
 
     return paths.map((path, idx) => {
       const href = `/${paths.slice(0, idx + 1).join("/")}`;
@@ -50,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   const breadcrumbs = getBreadcrumbs();
-  const activeTitle = breadcrumbs[breadcrumbs.length - 1]?.name || "Dashboard";
+  const activeTitle = breadcrumbs[breadcrumbs.length - 1]?.name || t("nav.dashboard");
 
   const getThemeIcon = (t: typeof theme) => {
     switch (t) {
@@ -78,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         <div className="flex flex-col text-left">
           {/* Breadcrumb pathing */}
           <nav className="hidden sm:flex items-center gap-1.5 text-xs text-text-muted mb-0.5 select-none">
-            <span>Planet Cinema</span>
+            <span>{t("common.cinema")}</span>
             {breadcrumbs.map((bc) => (
               <React.Fragment key={bc.href}>
                 <span>/</span>
@@ -94,8 +101,42 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
       </div>
 
-      {/* Right side: theme toggle & profile info */}
-      <div className="flex items-center gap-3">
+      {/* Right side: language, theme toggle & profile info */}
+      <div className="flex items-center gap-2.5">
+        {/* Language Dropdown */}
+        <div className="relative" ref={languageRef}>
+          <button
+            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+            aria-label={t("common.selectLanguage")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface border border-border text-text-primary transition text-xs font-bold cursor-pointer"
+          >
+            <Globe className="w-3.5 h-3.5 text-text-secondary" />
+            <span className="hidden sm:inline">{locale === "id" ? "ID" : "EN"}</span>
+            <ChevronDown className="w-3 h-3 text-text-muted" />
+          </button>
+
+          {isLanguageOpen && (
+            <div className="absolute right-0 mt-2 w-44 rounded-xl bg-surface border border-border shadow-xl z-50 p-1 flex flex-col gap-0.5 text-xs font-semibold">
+              {localeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setLocale(opt.value);
+                    setIsLanguageOpen(false);
+                  }}
+                  className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg transition cursor-pointer text-left ${
+                    locale === opt.value
+                      ? "bg-primary-soft text-primary font-bold"
+                      : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Theme Dropdown */}
         <div className="relative" ref={themeRef}>
           <button

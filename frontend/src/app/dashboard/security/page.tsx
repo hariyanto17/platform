@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import SecurityActivityChart from "@/components/security/SecurityActivityChart";
 import SecuritySeverityChart from "@/components/security/SecuritySeverityChart";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function SecurityCompliancePage() {
   // Filters state
@@ -228,20 +229,22 @@ export default function SecurityCompliancePage() {
             </select>
 
             {/* Date selections picker */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-slate-500">From:</span>
-              <input
-                type="date"
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-text-muted font-medium">Dari:</span>
+              <DatePicker
                 value={startDate}
-                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300"
+                onChange={(val) => { setStartDate(val); setPage(1); }}
+                size="sm"
+                placeholder="Mulai..."
+                className="w-36"
               />
-              <span className="text-slate-500 ml-1.5">To:</span>
-              <input
-                type="date"
+              <span className="text-text-muted font-medium ml-1">Sampai:</span>
+              <DatePicker
                 value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300"
+                onChange={(val) => { setEndDate(val); setPage(1); }}
+                size="sm"
+                placeholder="Sampai..."
+                className="w-36"
               />
             </div>
           </div>

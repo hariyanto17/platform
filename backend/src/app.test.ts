@@ -1236,6 +1236,48 @@ test("API Test Suite", async (t) => {
     assert.strictEqual(auditLogs[0].entityId, "PDF");
   });
 
+  await t.test("Phase 7M - Core Departmental Reports (Movies, Schedules, Products)", async () => {
+    const adminLoginRes = await fetch(`${url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: activeUser.email, password: testPassword }),
+    });
+    const adminCookie = adminLoginRes.headers.get("set-cookie") || "";
+
+    // 1. Movie Performance Report
+    const moviesRes = await fetch(`${url}/api/dashboard/reports/movies?startDate=2026-08-01&endDate=2026-08-07&page=1&limit=10`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(moviesRes.status, 200);
+    const moviesBody = await moviesRes.json() as any;
+    assert.ok(moviesBody.status === "success" || moviesBody.status === "partial");
+    assert.ok(Array.isArray(moviesBody.data));
+    assert.ok(moviesBody.meta.summary);
+    assert.ok(moviesBody.meta.pagination);
+
+    // 2. Showtime Performance Report
+    const schedulesRes = await fetch(`${url}/api/dashboard/reports/schedules?startDate=2026-08-01&endDate=2026-08-07&page=1&limit=10`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(schedulesRes.status, 200);
+    const schedulesBody = await schedulesRes.json() as any;
+    assert.ok(schedulesBody.status === "success" || schedulesBody.status === "partial");
+    assert.ok(Array.isArray(schedulesBody.data));
+    assert.ok(schedulesBody.meta.summary);
+    assert.ok(schedulesBody.meta.pagination);
+
+    // 3. Product Performance Report
+    const productsRes = await fetch(`${url}/api/dashboard/reports/products?startDate=2026-08-01&endDate=2026-08-07&page=1&limit=10`, {
+      headers: { cookie: adminCookie },
+    });
+    assert.strictEqual(productsRes.status, 200);
+    const productsBody = await productsRes.json() as any;
+    assert.ok(productsBody.status === "success" || productsBody.status === "partial");
+    assert.ok(Array.isArray(productsBody.data));
+    assert.ok(productsBody.meta.summary);
+    assert.ok(productsBody.meta.pagination);
+  });
+
   // Clean up
   server.close();
   await prisma.user.deleteMany({

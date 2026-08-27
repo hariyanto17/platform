@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Search, Plus, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/providers/ToastProvider";
 
 interface PaginatedOrganizations {
   items: OrganizationItem[];
@@ -21,6 +22,7 @@ interface PaginatedOrganizations {
 }
 
 export default function OrganizationsPage() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -30,22 +32,26 @@ export default function OrganizationsPage() {
   // Form states
   const [createName, setCreateName] = useState("");
   const [createCode, setCreateCode] = useState("");
-  const [createStatus, setCreateStatus] = useState("ACTIVE");
+  const [createStatus, setCreateStatus] = useState<"ACTIVE" | "DISABLED">("ACTIVE");
 
+  // Debounce search input
   useEffect(() => {
-    const handler = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(handler);
+      setPage(1); // reset to page 1 on search change
+    }, 400);
+    return () => clearTimeout(timer);
   }, [search]);
 
-  const { data: orgsResponse, isLoading, refetch } = useListOrganizationsQuery({
-    page,
-    limit: 10,
-    search: debouncedSearch || undefined,
-    status: status || undefined,
-  });
+  const { data: orgsResponse, isLoading, refetch } = useListOrganizationsQuery(
+    {
+      page,
+      limit: 10,
+      search: debouncedSearch || undefined,
+      status: status || undefined,
+    },
+    { refetchOnFocus: true }
+  );
 
   const [createOrg, { isLoading: isCreating }] = useCreateOrganizationMutation();
   const [updateOrg, { isLoading: isUpdating }] = useUpdateOrganizationMutation();
@@ -61,7 +67,7 @@ export default function OrganizationsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createName || !createCode) {
-      alert("Nama dan Kode wajib diisi");
+      toast.warning("Nama dan Kode organisasi wajib diisi.");
       return;
     }
     try {
@@ -75,30 +81,27 @@ export default function OrganizationsPage() {
       setCreateCode("");
       setCreateStatus("ACTIVE");
       refetch();
+      toast.success(`Organisasi ${createName} berhasil dibuat.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal membuat organisasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal membuat organisasi");
     }
   };
 
   const handleToggleStatus = async (orgId: string, currentStatus: string) => {
     const targetStatus = currentStatus === "ACTIVE" ? "DISABLED" : "ACTIVE";
-    const confirmMessage = targetStatus === "DISABLED"
-      ? "Menonaktifkan organisasi ini akan mencegah login dan SSO untuk seluruh anggotanya secara instan. Lanjutkan?"
-      : "Mengaktifkan kembali organisasi akan memulihkan seluruh login dan SSO anggotanya. Lanjutkan?";
-
-    if (!window.confirm(confirmMessage)) return;
 
     try {
       await updateOrg({ id: orgId, status: targetStatus }).unwrap();
       refetch();
+      toast.success(`Status organisasi berhasil diubah menjadi ${targetStatus}.`);
     } catch (err: unknown) {
       const errorMsg = err && typeof err === "object" && "data" in err
         ? (err as { data?: { message?: string } }).data?.message
         : "Gagal mengubah status organisasi";
-      alert(errorMsg);
+      toast.error(errorMsg || "Gagal mengubah status organisasi");
     }
   };
 
@@ -147,15 +150,15 @@ export default function OrganizationsPage() {
       render: (org) => (
         <div className="flex items-center gap-2 justify-end">
           <Link href={`/organizations/${org.id}`}>
-            <Button variant="secondary" className="flex items-center gap-1 font-semibold text-xs py-1 px-3">
-              <Eye size={12} /> Detail
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Eye className="w-3.5 h-3.5 shrink-0" /> Detail
             </Button>
           </Link>
           <Button
             variant={org.status === "ACTIVE" ? "danger" : "primary"}
+            size="sm"
             onClick={() => handleToggleStatus(org.id, org.status)}
             disabled={isUpdating}
-            className="font-semibold text-xs py-1 px-3"
           >
             {org.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
           </Button>
@@ -174,7 +177,7 @@ export default function OrganizationsPage() {
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2 font-semibold">
-          <Plus size={16} /> Tambah Organisasi
+          <Plus className="w-4 h-4 shrink-0" /> Tambah Organisasi
         </Button>
       </div>
 
@@ -273,7 +276,7 @@ export default function OrganizationsPage() {
             <label className="text-xs font-bold text-text-secondary block mb-1">Status Awal</label>
             <select
               value={createStatus}
-              onChange={(e) => setCreateStatus(e.target.value)}
+              onChange={(e) => setCreateStatus(e.target.value as "ACTIVE" | "DISABLED")}
               className="w-full bg-surface border border-border rounded px-3 py-2 text-sm font-semibold text-text-primary focus:outline-none focus:border-primary"
             >
               <option value="ACTIVE">ACTIVE (Langsung Aktif)</option>
