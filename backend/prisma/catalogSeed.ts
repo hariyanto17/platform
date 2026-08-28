@@ -537,5 +537,165 @@ export async function seedProductCatalog() {
   }
   console.log("  ✓ Verticals seeded with features");
 
-  console.log("✓ Commercial Product Catalog Seeding Complete.");
+  // 8. Seed Subscription Permissions
+  const subPermissions = [
+    { code: "platform.subscriptions.view", name: "View Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
+    { code: "platform.subscriptions.manage", name: "Manage Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
+  ];
+
+  for (const perm of subPermissions) {
+    const p = await prisma.permission.upsert({
+      where: { code: perm.code },
+      update: { name: perm.name, applicationCode: perm.applicationCode },
+      create: perm,
+    });
+
+    const adminRole = await prisma.role.findUnique({ where: { code: "PLATFORM_ADMINISTRATOR" } });
+    if (adminRole) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: adminRole.id,
+            permissionId: p.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: adminRole.id,
+          permissionId: p.id,
+        },
+      });
+    }
+  }
+  console.log("  ✓ Subscription permissions registered");
+
+  // 9. Seed Canonical Development/UAT Plan Prices
+  const planPricesData = [
+    { planCode: "PLAN_FREE", billingCycle: "MONTHLY", amount: 0, currency: "IDR" },
+    { planCode: "PLAN_FREE", billingCycle: "YEARLY", amount: 0, currency: "IDR" },
+    { planCode: "PLAN_STARTER", billingCycle: "MONTHLY", amount: 199000, currency: "IDR" },
+    { planCode: "PLAN_STARTER", billingCycle: "YEARLY", amount: 1990000, currency: "IDR" },
+    { planCode: "PLAN_PRO", billingCycle: "MONTHLY", amount: 499000, currency: "IDR" },
+    { planCode: "PLAN_PRO", billingCycle: "YEARLY", amount: 4990000, currency: "IDR" },
+    { planCode: "PLAN_BUSINESS", billingCycle: "MONTHLY", amount: 1299000, currency: "IDR" },
+    { planCode: "PLAN_BUSINESS", billingCycle: "YEARLY", amount: 12990000, currency: "IDR" },
+    { planCode: "PLAN_ENTERPRISE", billingCycle: "MONTHLY", amount: 3500000, currency: "IDR" },
+    { planCode: "PLAN_ENTERPRISE", billingCycle: "YEARLY", amount: 35000000, currency: "IDR" },
+  ];
+
+  for (const pp of planPricesData) {
+    const existing = await prisma.planPrice.findFirst({
+      where: { planCode: pp.planCode, billingCycle: pp.billingCycle, isActive: true },
+    });
+    if (!existing) {
+      await prisma.planPrice.create({
+        data: {
+          planCode: pp.planCode,
+          billingCycle: pp.billingCycle,
+          amount: pp.amount,
+          currency: pp.currency,
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log("  ✓ Plan Prices seeded");
+
+  // 10. Seed Canonical Development/UAT Add-on Prices
+  const addOnPricesData = [
+    { addOnCode: "ADDON_KDS", billingCycle: "MONTHLY", amount: 150000, currency: "IDR" },
+    { addOnCode: "ADDON_KDS", billingCycle: "YEARLY", amount: 1500000, currency: "IDR" },
+    { addOnCode: "ADDON_SELF_ORDER", billingCycle: "MONTHLY", amount: 200000, currency: "IDR" },
+    { addOnCode: "ADDON_SELF_ORDER", billingCycle: "YEARLY", amount: 2000000, currency: "IDR" },
+    { addOnCode: "ADDON_LOYALTY", billingCycle: "MONTHLY", amount: 100000, currency: "IDR" },
+    { addOnCode: "ADDON_LOYALTY", billingCycle: "YEARLY", amount: 1000000, currency: "IDR" },
+    { addOnCode: "ADDON_ADV_WMS", billingCycle: "MONTHLY", amount: 250000, currency: "IDR" },
+    { addOnCode: "ADDON_ADV_WMS", billingCycle: "YEARLY", amount: 2500000, currency: "IDR" },
+    { addOnCode: "ADDON_OPEN_API", billingCycle: "MONTHLY", amount: 300000, currency: "IDR" },
+    { addOnCode: "ADDON_OPEN_API", billingCycle: "YEARLY", amount: 3000000, currency: "IDR" },
+    { addOnCode: "ADDON_WHATSAPP", billingCycle: "MONTHLY", amount: 75000, currency: "IDR" },
+    { addOnCode: "ADDON_WHATSAPP", billingCycle: "YEARLY", amount: 750000, currency: "IDR" },
+  ];
+
+  for (const ap of addOnPricesData) {
+    const existing = await prisma.addOnPrice.findFirst({
+      where: { addOnCode: ap.addOnCode, billingCycle: ap.billingCycle, isActive: true },
+    });
+    if (!existing) {
+      await prisma.addOnPrice.create({
+        data: {
+          addOnCode: ap.addOnCode,
+          billingCycle: ap.billingCycle,
+          amount: ap.amount,
+          currency: ap.currency,
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log("  ✓ Add-on Prices seeded");
+
+  // 11. Seed Baseline UAT Organization Subscriptions
+  const hqOrg = await prisma.organization.findUnique({ where: { code: "PLANET-HQ" } });
+  if (hqOrg) {
+    const existingSub = await prisma.subscription.findFirst({ where: { organizationId: hqOrg.id } });
+    if (!existingSub) {
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+      const sub = await prisma.subscription.create({
+        data: {
+          organizationId: hqOrg.id,
+          planCode: "PLAN_ENTERPRISE",
+          status: "ACTIVE",
+          billingCycle: "YEARLY",
+          planPriceAmount: 35000000,
+          currency: "IDR",
+          startedAt: now,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          items: {
+            create: [
+              { addOnCode: "ADDON_ADV_WMS", quantity: 1, unitPrice: 2500000, currency: "IDR" },
+              { addOnCode: "ADDON_OPEN_API", quantity: 1, unitPrice: 3000000, currency: "IDR" },
+            ],
+          },
+        },
+      });
+      console.log(`  ✓ Seeded baseline subscription for ${hqOrg.name} (${sub.planCode})`);
+    }
+  }
+
+  const boneOrg = await prisma.organization.findUnique({ where: { code: "PLANET-BONE" } });
+  if (boneOrg) {
+    const existingSub = await prisma.subscription.findFirst({ where: { organizationId: boneOrg.id } });
+    if (!existingSub) {
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setDate(periodEnd.getDate() + 30);
+
+      const sub = await prisma.subscription.create({
+        data: {
+          organizationId: boneOrg.id,
+          planCode: "PLAN_PRO",
+          status: "ACTIVE",
+          billingCycle: "MONTHLY",
+          planPriceAmount: 499000,
+          currency: "IDR",
+          startedAt: now,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          items: {
+            create: [
+              { addOnCode: "ADDON_KDS", quantity: 2, unitPrice: 150000, currency: "IDR" },
+            ],
+          },
+        },
+      });
+      console.log(`  ✓ Seeded baseline subscription for ${boneOrg.name} (${sub.planCode})`);
+    }
+  }
+
+  console.log("✓ Commercial Product Catalog & Subscription Seeding Complete.");
 }

@@ -16,7 +16,8 @@ import {
   TrendingUp,
   AlertTriangle,
   Shield,
-  Boxes
+  Boxes,
+  CreditCard
 } from "lucide-react";
 
 import { useTranslation } from "@/providers/LanguageProvider";

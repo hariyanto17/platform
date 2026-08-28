@@ -16,6 +16,7 @@ import dashboardRouter from "./modules/dashboard/router";
 import settingsRouter from "./modules/settings/router";
 import securityRouter from "./modules/security/router";
 import catalogRouter from "./modules/catalog/router";
+import subscriptionsRouter from "./modules/subscriptions/router";
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/security", securityRouter);
 app.use("/api/catalog", catalogRouter);
+app.use("/api/subscriptions", subscriptionsRouter);
 
 // Global Error Handler Middleware
 app.use(errorHandler);

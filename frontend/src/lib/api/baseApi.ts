@@ -47,6 +47,8 @@ export const baseApi = createApi({
     "CatalogAddOn",
     "CatalogVertical",
     "CatalogOverview",
+    "Subscription",
+    "SubscriptionPrice",
   ],
   endpoints: () => ({}),
 });
