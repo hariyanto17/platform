@@ -230,8 +230,8 @@ export async function seedUat() {
   }
   console.log("✓ System Roles & Role-Permission mappings verified");
 
-  // 5. UAT Accounts Creation (Password: Uat12345!)
-  const uatPasswordPlain = "Uat12345!";
+  // 5. UAT Accounts Creation (Password: test1234)
+  const uatPasswordPlain = "test1234";
   const uatPasswordHash = await argon2.hash(uatPasswordPlain);
 
   const hqOrg = orgsMap["PLANET-HQ"];
@@ -323,7 +323,37 @@ export async function seedUat() {
         { appCode: "CONCESSION", roleCode: "CONCESSION_CASHIER" },
       ],
     },
-    // 9. Executive GM (SSO Multi-app)
+    // 9. Concession Accounting
+    {
+      email: "uat.accounting@planetcinema.local",
+      name: "UAT Accounting Officer",
+      org: hqOrg,
+      status: "ACTIVE" as const,
+      multiAccess: [
+        { appCode: "CONCESSION", roleCode: "CONCESSION_ADMINISTRATOR" },
+      ],
+    },
+    // 10. Concession Kitchen
+    {
+      email: "uat.kitchen@planetcinema.local",
+      name: "UAT Kitchen Cook",
+      org: hqOrg,
+      status: "ACTIVE" as const,
+      multiAccess: [
+        { appCode: "CONCESSION", roleCode: "CONCESSION_CASHIER" },
+      ],
+    },
+    // 11. Concession Warehouse
+    {
+      email: "uat.warehouse@planetcinema.local",
+      name: "UAT Warehouse Officer",
+      org: hqOrg,
+      status: "ACTIVE" as const,
+      multiAccess: [
+        { appCode: "CONCESSION", roleCode: "CONCESSION_ADMINISTRATOR" },
+      ],
+    },
+    // 12. Executive GM (SSO Multi-app)
     {
       email: "uat.executive@planetcinema.local",
       name: "UAT Executive General Manager",
