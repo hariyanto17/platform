@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   Shield,
   Boxes,
-  CreditCard
+  CreditCard,
+  Gauge
 } from "lucide-react";
 
 import { useTranslation } from "@/providers/LanguageProvider";
@@ -70,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { name: "Product Catalog", href: "/catalog", icon: <Boxes className="w-5 h-5" />, permission: "platform.catalog.view" },
         { name: "Subscriptions", href: "/subscriptions", icon: <CreditCard className="w-5 h-5" />, permission: "platform.subscriptions.view" },
         { name: "Entitlements", href: "/entitlements", icon: <Shield className="w-5 h-5" />, permission: "platform.entitlements.view" },
+        { name: "Quotas", href: "/quotas", icon: <Gauge className="w-5 h-5" />, permission: "platform.quotas.view" },
       ].filter(item => !item.permission || hasPermission(item.permission) || hasPermission("platform.applications.view")),
     },
     {

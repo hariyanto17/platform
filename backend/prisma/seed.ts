@@ -111,7 +111,9 @@ async function main() {
       "platform.roles.view", "platform.permissions.view", "platform.settings.view",
       "platform.settings.update", "platform.catalog.view", "platform.catalog.manage",
       "platform.subscriptions.view", "platform.subscriptions.manage",
-      "platform.entitlements.view", "platform.entitlements.manage"
+      "platform.entitlements.view", "platform.entitlements.manage",
+      "platform.quotas.view", "platform.quotas.manage",
+      "platform.quotas.usage.view", "platform.quotas.usage.manage"
     ],
     TICKETING_ADMINISTRATOR: [
       "ticketing.dashboard.view", "ticketing.movies.view", "ticketing.movies.create",

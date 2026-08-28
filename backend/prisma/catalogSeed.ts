@@ -537,12 +537,16 @@ export async function seedProductCatalog() {
   }
   console.log("  ✓ Verticals seeded with features");
 
-  // 8. Seed Subscription & Entitlement Permissions
+  // 8. Seed Subscription, Entitlement & Quota Permissions
   const subPermissions = [
     { code: "platform.subscriptions.view", name: "View Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
     { code: "platform.subscriptions.manage", name: "Manage Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
     { code: "platform.entitlements.view", name: "View Tenant Effective Entitlements & Feature Grants", applicationCode: "PLATFORM" },
     { code: "platform.entitlements.manage", name: "Manage Tenant Custom Entitlements & Feature Revocations", applicationCode: "PLATFORM" },
+    { code: "platform.quotas.view", name: "View Tenant Quota Allocations & Consumption", applicationCode: "PLATFORM" },
+    { code: "platform.quotas.manage", name: "Manage Tenant Quota Overrides & Allocations", applicationCode: "PLATFORM" },
+    { code: "platform.quotas.usage.view", name: "View Resource Usage & Metering Telemetry", applicationCode: "PLATFORM" },
+    { code: "platform.quotas.usage.manage", name: "Record Internal Resource Usage Telemetry", applicationCode: "PLATFORM" },
   ];
 
   for (const perm of subPermissions) {
@@ -699,5 +703,233 @@ export async function seedProductCatalog() {
     }
   }
 
-  console.log("✓ Commercial Product Catalog & Subscription Seeding Complete.");
+  // 11. Seed Canonical Quota Definitions
+  const quotaDefs = [
+    {
+      code: "MAX_ACTIVE_DEVICES",
+      name: "Active Device Seats",
+      description: "Maximum concurrently activated cashier POS / kiosk / mobile devices",
+      limitType: "HARD_LIMIT",
+      unit: "DEVICES",
+      measurementType: "GAUGE",
+    },
+    {
+      code: "MAX_OUTLETS",
+      name: "Operational Outlets / Branches",
+      description: "Maximum active cinema or store locations",
+      limitType: "HARD_LIMIT",
+      unit: "OUTLETS",
+      measurementType: "GAUGE",
+    },
+    {
+      code: "MAX_SKUS",
+      name: "Active Catalog SKUs",
+      description: "Maximum active menu, concession, ticket, or inventory items",
+      limitType: "FAIR_USE",
+      unit: "SKUS",
+      measurementType: "GAUGE",
+    },
+    {
+      code: "MAX_MONTHLY_TRANSACTIONS",
+      name: "Monthly Transaction Volume",
+      description: "Reasonable monthly completed sales transactions threshold",
+      limitType: "FAIR_USE",
+      unit: "TRANSACTIONS",
+      measurementType: "COUNTER",
+    },
+    {
+      code: "STORAGE_GB",
+      name: "Cloud Storage Quota",
+      description: "Media, movie trailers, poster assets and backup storage allocation in GB",
+      limitType: "SOFT_LIMIT",
+      unit: "GIGABYTES",
+      measurementType: "GAUGE",
+    },
+    {
+      code: "API_CALLS",
+      name: "Monthly External API Calls",
+      description: "Open API & Integration webhook call quota per calendar month",
+      limitType: "SOFT_LIMIT",
+      unit: "CALLS",
+      measurementType: "COUNTER",
+    },
+    {
+      code: "WHATSAPP_CREDITS",
+      name: "WhatsApp Notification Credits",
+      description: "Monthly customer e-ticket & promo message broadcast credits",
+      limitType: "SOFT_LIMIT",
+      unit: "CREDITS",
+      measurementType: "COUNTER",
+    },
+  ];
+
+  for (const qDef of quotaDefs) {
+    await prisma.quotaDefinition.upsert({
+      where: { code: qDef.code },
+      update: {
+        name: qDef.name,
+        description: qDef.description,
+        limitType: qDef.limitType,
+        unit: qDef.unit,
+        measurementType: qDef.measurementType,
+      },
+      create: qDef,
+    });
+  }
+  console.log("  ✓ Canonical Quota Definitions seeded");
+
+  // 12. Seed Plan Quota Grants
+  const planQuotas: Array<{ planCode: string; resourceCode: string; quantity: number | null; isUnlimited: boolean }> = [
+    // FREE
+    { planCode: "PLAN_FREE", resourceCode: "MAX_OUTLETS", quantity: 1, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 1, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "MAX_SKUS", quantity: 50, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "MAX_MONTHLY_TRANSACTIONS", quantity: 300, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "STORAGE_GB", quantity: 2, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "API_CALLS", quantity: 0, isUnlimited: false },
+    { planCode: "PLAN_FREE", resourceCode: "WHATSAPP_CREDITS", quantity: 0, isUnlimited: false },
+
+    // STARTER
+    { planCode: "PLAN_STARTER", resourceCode: "MAX_OUTLETS", quantity: 1, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 2, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "MAX_SKUS", quantity: 500, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "MAX_MONTHLY_TRANSACTIONS", quantity: 3000, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "STORAGE_GB", quantity: 10, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "API_CALLS", quantity: 1000, isUnlimited: false },
+    { planCode: "PLAN_STARTER", resourceCode: "WHATSAPP_CREDITS", quantity: 100, isUnlimited: false },
+
+    // PRO
+    { planCode: "PLAN_PRO", resourceCode: "MAX_OUTLETS", quantity: 3, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 6, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "MAX_SKUS", quantity: 5000, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "MAX_MONTHLY_TRANSACTIONS", quantity: 25000, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "STORAGE_GB", quantity: 50, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "API_CALLS", quantity: 10000, isUnlimited: false },
+    { planCode: "PLAN_PRO", resourceCode: "WHATSAPP_CREDITS", quantity: 500, isUnlimited: false },
+
+    // BUSINESS
+    { planCode: "PLAN_BUSINESS", resourceCode: "MAX_OUTLETS", quantity: 20, isUnlimited: false },
+    { planCode: "PLAN_BUSINESS", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 30, isUnlimited: false },
+    { planCode: "PLAN_BUSINESS", resourceCode: "MAX_SKUS", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_BUSINESS", resourceCode: "MAX_MONTHLY_TRANSACTIONS", quantity: 150000, isUnlimited: false },
+    { planCode: "PLAN_BUSINESS", resourceCode: "STORAGE_GB", quantity: 200, isUnlimited: false },
+    { planCode: "PLAN_BUSINESS", resourceCode: "API_CALLS", quantity: 100000, isUnlimited: false },
+    { planCode: "PLAN_BUSINESS", resourceCode: "WHATSAPP_CREDITS", quantity: 2500, isUnlimited: false },
+
+    // ENTERPRISE
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "MAX_OUTLETS", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "MAX_ACTIVE_DEVICES", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "MAX_SKUS", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "MAX_MONTHLY_TRANSACTIONS", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "STORAGE_GB", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "API_CALLS", quantity: null, isUnlimited: true },
+    { planCode: "PLAN_ENTERPRISE", resourceCode: "WHATSAPP_CREDITS", quantity: null, isUnlimited: true },
+  ];
+
+  for (const pq of planQuotas) {
+    await prisma.planQuotaGrant.upsert({
+      where: {
+        planCode_resourceCode: {
+          planCode: pq.planCode,
+          resourceCode: pq.resourceCode,
+        },
+      },
+      update: {
+        quantity: pq.quantity,
+        isUnlimited: pq.isUnlimited,
+      },
+      create: pq,
+    });
+  }
+  console.log("  ✓ Plan Quota Grants seeded");
+
+  // 13. Seed Add-On Quota Grants
+  const addOnQuotas = [
+    { addOnCode: "ADDON_KDS", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 2, isUnlimited: false },
+    { addOnCode: "ADDON_SELF_ORDER", resourceCode: "MAX_ACTIVE_DEVICES", quantity: 4, isUnlimited: false },
+    { addOnCode: "ADDON_OPEN_API", resourceCode: "API_CALLS", quantity: 50000, isUnlimited: false },
+    { addOnCode: "ADDON_WHATSAPP", resourceCode: "WHATSAPP_CREDITS", quantity: 2000, isUnlimited: false },
+  ];
+
+  for (const aq of addOnQuotas) {
+    await prisma.addOnQuotaGrant.upsert({
+      where: {
+        addOnCode_resourceCode: {
+          addOnCode: aq.addOnCode,
+          resourceCode: aq.resourceCode,
+        },
+      },
+      update: {
+        quantity: aq.quantity,
+        isUnlimited: aq.isUnlimited,
+      },
+      create: aq,
+    });
+  }
+  console.log("  ✓ Add-On Quota Grants seeded");
+
+  // 14. Seed Baseline Usage for UAT Organizations
+  const currentMonth = "2026-08";
+  if (hqOrg) {
+    const hqUsages = [
+      { resourceCode: "MAX_ACTIVE_DEVICES", period: "GLOBAL", quantity: 18 },
+      { resourceCode: "MAX_OUTLETS", period: "GLOBAL", quantity: 2 },
+      { resourceCode: "MAX_SKUS", period: "GLOBAL", quantity: 420 },
+      { resourceCode: "MAX_MONTHLY_TRANSACTIONS", period: currentMonth, quantity: 12450 },
+      { resourceCode: "STORAGE_GB", period: "GLOBAL", quantity: 38.5 },
+      { resourceCode: "API_CALLS", period: currentMonth, quantity: 4800 },
+      { resourceCode: "WHATSAPP_CREDITS", period: currentMonth, quantity: 950 },
+    ];
+    for (const u of hqUsages) {
+      await prisma.quotaUsage.upsert({
+        where: {
+          organizationId_resourceCode_period: {
+            organizationId: hqOrg.id,
+            resourceCode: u.resourceCode,
+            period: u.period,
+          },
+        },
+        update: { quantity: u.quantity },
+        create: {
+          organizationId: hqOrg.id,
+          resourceCode: u.resourceCode,
+          period: u.period,
+          quantity: u.quantity,
+        },
+      });
+    }
+  }
+
+  if (boneOrg) {
+    const boneUsages = [
+      { resourceCode: "MAX_ACTIVE_DEVICES", period: "GLOBAL", quantity: 8 }, // 6 (Plan PRO) + 4 (2x ADDON_KDS) = 10 total
+      { resourceCode: "MAX_OUTLETS", period: "GLOBAL", quantity: 1 },
+      { resourceCode: "MAX_SKUS", period: "GLOBAL", quantity: 210 },
+      { resourceCode: "MAX_MONTHLY_TRANSACTIONS", period: currentMonth, quantity: 6420 },
+      { resourceCode: "STORAGE_GB", period: "GLOBAL", quantity: 14.2 },
+      { resourceCode: "API_CALLS", period: currentMonth, quantity: 850 },
+      { resourceCode: "WHATSAPP_CREDITS", period: currentMonth, quantity: 180 },
+    ];
+    for (const u of boneUsages) {
+      await prisma.quotaUsage.upsert({
+        where: {
+          organizationId_resourceCode_period: {
+            organizationId: boneOrg.id,
+            resourceCode: u.resourceCode,
+            period: u.period,
+          },
+        },
+        update: { quantity: u.quantity },
+        create: {
+          organizationId: boneOrg.id,
+          resourceCode: u.resourceCode,
+          period: u.period,
+          quantity: u.quantity,
+        },
+      });
+    }
+  }
+  console.log("  ✓ UAT Baseline Quota Usages seeded");
+
+  console.log("✓ Commercial Product Catalog, Subscription & Quota Seeding Complete.");
 }

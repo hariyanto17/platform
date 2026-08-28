@@ -29,6 +29,8 @@ model Organization {
   applications        OrganizationApplication[]
   subscriptions       Subscription[]
   entitlementGrants   EntitlementGrant[]
+  tenantQuotaGrants   TenantQuotaGrant[]
+  quotaUsages         QuotaUsage[]
 }
 
 model User {
@@ -304,18 +306,19 @@ model FeatureDependency {
 }
 
 model Plan {
-  id            String         @id @default(uuid())
-  code          String         @unique // e.g. "PLAN_FREE", "PLAN_STARTER", "PLAN_PRO", "PLAN_BUSINESS", "PLAN_ENTERPRISE"
-  name          String
-  tier          String // FREE, STARTER, PRO, BUSINESS, ENTERPRISE
-  description   String?
-  status        String         @default("ACTIVE") // ACTIVE, DISABLED, ARCHIVED
-  sortOrder     Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  planFeatures  PlanFeature[]
-  planPrices    PlanPrice[]
-  subscriptions Subscription[]
+  id              String           @id @default(uuid())
+  code            String           @unique // e.g. "PLAN_FREE", "PLAN_STARTER", "PLAN_PRO", "PLAN_BUSINESS", "PLAN_ENTERPRISE"
+  name            String
+  tier            String // FREE, STARTER, PRO, BUSINESS, ENTERPRISE
+  description     String?
+  status          String           @default("ACTIVE") // ACTIVE, DISABLED, ARCHIVED
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  planFeatures    PlanFeature[]
+  planPrices      PlanPrice[]
+  subscriptions   Subscription[]
+  planQuotaGrants PlanQuotaGrant[]
 
   @@index([code])
   @@index([tier])
@@ -346,6 +349,7 @@ model AddOn {
   addOnFeatures     AddOnFeature[]
   addOnPrices       AddOnPrice[]
   subscriptionItems SubscriptionItem[]
+  addOnQuotaGrants  AddOnQuotaGrant[]
 
   @@index([code])
   @@index([status])
@@ -492,4 +496,99 @@ model EntitlementGrant {
   @@index([featureKey])
   @@index([grantType])
   @@index([status])
+}
+
+// ============================================================================
+// PHASE 8A.4: QUOTA DOMAIN & USAGE METERING ENGINE
+// ============================================================================
+
+model QuotaDefinition {
+  code            String             @id // e.g. "MAX_ACTIVE_DEVICES", "MAX_OUTLETS", "MAX_SKUS", "MAX_MONTHLY_TRANSACTIONS", "STORAGE_GB", "API_CALLS", "WHATSAPP_CREDITS"
+  name            String
+  description     String?
+  limitType       String             @default("HARD_LIMIT") // HARD_LIMIT, SOFT_LIMIT, FAIR_USE
+  unit            String             @default("COUNT") // DEVICES, OUTLETS, SKUS, TRANSACTIONS, GIGABYTES, CALLS, CREDITS
+  measurementType String             @default("GAUGE") // GAUGE, COUNTER
+  status          String             @default("ACTIVE") // ACTIVE, DISABLED
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  planGrants      PlanQuotaGrant[]
+  addOnGrants     AddOnQuotaGrant[]
+  customGrants    TenantQuotaGrant[]
+  usages          QuotaUsage[]
+
+  @@index([limitType])
+  @@index([status])
+}
+
+model PlanQuotaGrant {
+  id           String          @id @default(uuid())
+  planCode     String
+  resourceCode String
+  quantity     Int? // null if isUnlimited = true
+  isUnlimited  Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  plan         Plan            @relation(fields: [planCode], references: [code], onDelete: Cascade)
+  resource     QuotaDefinition @relation(fields: [resourceCode], references: [code], onDelete: Cascade)
+
+  @@unique([planCode, resourceCode])
+  @@index([planCode])
+  @@index([resourceCode])
+}
+
+model AddOnQuotaGrant {
+  id           String          @id @default(uuid())
+  addOnCode    String
+  resourceCode String
+  quantity     Int? // per purchased seat/instance
+  isUnlimited  Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  addOn        AddOn           @relation(fields: [addOnCode], references: [code], onDelete: Cascade)
+  resource     QuotaDefinition @relation(fields: [resourceCode], references: [code], onDelete: Cascade)
+
+  @@unique([addOnCode, resourceCode])
+  @@index([addOnCode])
+  @@index([resourceCode])
+}
+
+model TenantQuotaGrant {
+  id             String          @id @default(uuid())
+  organizationId String
+  resourceCode   String
+  quantity       Int?
+  isUnlimited    Boolean         @default(false)
+  overrideMode   String          @default("ADD") // ADD, REPLACE
+  effectiveFrom  DateTime        @default(now())
+  effectiveUntil DateTime?
+  notes          String?
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  resource       QuotaDefinition @relation(fields: [resourceCode], references: [code], onDelete: Cascade)
+
+  @@unique([organizationId, resourceCode])
+  @@index([organizationId])
+  @@index([resourceCode])
+}
+
+model QuotaUsage {
+  id             String          @id @default(uuid())
+  organizationId String
+  resourceCode   String
+  period         String          @default("GLOBAL") // "GLOBAL" for gauges, "YYYY-MM" (e.g. "2026-08") for periodic counters
+  quantity       Decimal         @default(0) @db.Decimal(14, 2)
+  lastRecordedAt DateTime        @default(now())
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  resource       QuotaDefinition @relation(fields: [resourceCode], references: [code], onDelete: Cascade)
+
+  @@unique([organizationId, resourceCode, period])
+  @@index([organizationId])
+  @@index([resourceCode])
+  @@index([period])
 }
