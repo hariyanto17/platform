@@ -68,6 +68,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Commercial Catalog",
       items: [
         { name: "Product Catalog", href: "/catalog", icon: <Boxes className="w-5 h-5" />, permission: "platform.catalog.view" },
+        { name: "Subscriptions", href: "/subscriptions", icon: <CreditCard className="w-5 h-5" />, permission: "platform.subscriptions.view" },
+        { name: "Entitlements", href: "/entitlements", icon: <Shield className="w-5 h-5" />, permission: "platform.entitlements.view" },
       ].filter(item => !item.permission || hasPermission(item.permission) || hasPermission("platform.applications.view")),
     },
     {

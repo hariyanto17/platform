@@ -537,10 +537,12 @@ export async function seedProductCatalog() {
   }
   console.log("  ✓ Verticals seeded with features");
 
-  // 8. Seed Subscription Permissions
+  // 8. Seed Subscription & Entitlement Permissions
   const subPermissions = [
     { code: "platform.subscriptions.view", name: "View Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
     { code: "platform.subscriptions.manage", name: "Manage Subscriptions & Billing Contracts", applicationCode: "PLATFORM" },
+    { code: "platform.entitlements.view", name: "View Tenant Effective Entitlements & Feature Grants", applicationCode: "PLATFORM" },
+    { code: "platform.entitlements.manage", name: "Manage Tenant Custom Entitlements & Feature Revocations", applicationCode: "PLATFORM" },
   ];
 
   for (const perm of subPermissions) {

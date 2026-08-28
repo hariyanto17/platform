@@ -17,6 +17,7 @@ import settingsRouter from "./modules/settings/router";
 import securityRouter from "./modules/security/router";
 import catalogRouter from "./modules/catalog/router";
 import subscriptionsRouter from "./modules/subscriptions/router";
+import entitlementsRouter from "./modules/entitlements/router";
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/security", securityRouter);
 app.use("/api/catalog", catalogRouter);
 app.use("/api/subscriptions", subscriptionsRouter);
+app.use("/api/entitlements", entitlementsRouter);
 
 // Global Error Handler Middleware
 app.use(errorHandler);

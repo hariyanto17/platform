@@ -28,6 +28,7 @@ model Organization {
   applicationAccesses UserApplicationAccess[]
   applications        OrganizationApplication[]
   subscriptions       Subscription[]
+  entitlementGrants   EntitlementGrant[]
 }
 
 model User {
@@ -266,21 +267,22 @@ model Module {
 }
 
 model Feature {
-  id               String              @id @default(uuid())
-  key              String              @unique // canonical: e.g. "pos.checkout.cash"
-  name             String
-  description      String?
-  moduleCode       String
-  module           Module              @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
-  isCore           Boolean             @default(false)
-  status           String              @default("ACTIVE") // ACTIVE, DISABLED
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  planFeatures     PlanFeature[]
-  addOnFeatures    AddOnFeature[]
-  verticalFeatures VerticalFeature[]
-  dependencies     FeatureDependency[] @relation("FeatureAsDependent")
-  requiredBy       FeatureDependency[] @relation("FeatureAsRequired")
+  id                String              @id @default(uuid())
+  key               String              @unique // canonical: e.g. "pos.checkout.cash"
+  name              String
+  description       String?
+  moduleCode        String
+  module            Module              @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
+  isCore            Boolean             @default(false)
+  status            String              @default("ACTIVE") // ACTIVE, DISABLED
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  planFeatures      PlanFeature[]
+  addOnFeatures     AddOnFeature[]
+  verticalFeatures  VerticalFeature[]
+  dependencies      FeatureDependency[] @relation("FeatureAsDependent")
+  requiredBy        FeatureDependency[] @relation("FeatureAsRequired")
+  entitlementGrants EntitlementGrant[]
 
   @@index([moduleCode])
   @@index([key])
@@ -464,4 +466,30 @@ model SubscriptionItem {
   @@unique([subscriptionId, addOnCode])
   @@index([subscriptionId])
   @@index([addOnCode])
+}
+
+// ============================================================================
+// PHASE 8A.3: ENTITLEMENT DOMAIN
+// ============================================================================
+
+model EntitlementGrant {
+  id              String       @id @default(uuid())
+  organizationId  String
+  featureKey      String
+  grantType       String       @default("CUSTOM") // PLAN, ADD_ON, VERTICAL, CUSTOM
+  grantSourceCode String? // e.g. "PLAN_PRO", "ADDON_KDS", "VERTICAL_FNB", "MANUAL_OVERRIDE"
+  status          String       @default("ACTIVE") // GRANTED, ACTIVE, SUSPENDED, EXPIRED, REVOKED
+  effectiveFrom   DateTime     @default(now())
+  effectiveUntil  DateTime?
+  notes           String?
+  createdBy       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feature         Feature      @relation(fields: [featureKey], references: [key], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([featureKey])
+  @@index([grantType])
+  @@index([status])
 }

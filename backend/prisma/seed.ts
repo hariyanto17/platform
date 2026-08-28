@@ -109,7 +109,9 @@ async function main() {
       "platform.organizations.manage", "platform.applications.view", "platform.applications.manage",
       "platform.organization_applications.manage", "platform.audit_logs.view", "platform.access.manage",
       "platform.roles.view", "platform.permissions.view", "platform.settings.view",
-      "platform.settings.update"
+      "platform.settings.update", "platform.catalog.view", "platform.catalog.manage",
+      "platform.subscriptions.view", "platform.subscriptions.manage",
+      "platform.entitlements.view", "platform.entitlements.manage"
     ],
     TICKETING_ADMINISTRATOR: [
       "ticketing.dashboard.view", "ticketing.movies.view", "ticketing.movies.create",
