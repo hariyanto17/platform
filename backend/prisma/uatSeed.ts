@@ -580,8 +580,12 @@ export async function seedUat() {
         data: log,
       });
     }
+    console.log("✓ Security Audit Logs populated");
   }
-  console.log("✓ Security Audit Logs populated");
+
+  // Seed Commercial Product Catalog
+  const { seedProductCatalog } = await import("./catalogSeed");
+  await seedProductCatalog();
 
   console.log("==================================================");
   console.log("  Platform UAT Database Seeding Completed!        ");

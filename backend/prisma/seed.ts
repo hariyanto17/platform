@@ -159,9 +159,19 @@ async function main() {
 
   for (const setting of defaultSettings) {
     await prisma.appSetting.upsert({
-      where: { key: setting.key },
+      where: {
+        key_scope_scopeId: {
+          key: setting.key,
+          scope: "GLOBAL",
+          scopeId: "",
+        },
+      },
       update: {},
-      create: setting,
+      create: {
+        ...setting,
+        scope: "GLOBAL",
+        scopeId: "",
+      },
     });
   }
   console.log("- Default settings seeded");
@@ -236,6 +246,10 @@ async function main() {
     });
   }
   console.log("- Organization application mappings seeded successfully");
+
+  // 8. Seed Commercial Product Catalog
+  const { seedProductCatalog } = await import("./catalogSeed");
+  await seedProductCatalog();
 
   console.log("Database seeding completed!");
 }

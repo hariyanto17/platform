@@ -15,7 +15,8 @@ import {
   Film,
   TrendingUp,
   AlertTriangle,
-  Shield
+  Shield,
+  Boxes
 } from "lucide-react";
 
 import { useTranslation } from "@/providers/LanguageProvider";
@@ -61,6 +62,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { name: t("nav.organizations"), href: "/organizations", icon: <Building2 className="w-5 h-5" />, permission: "platform.organizations.view" },
         { name: t("nav.applications"), href: "/applications", icon: <Tv2 className="w-5 h-5" />, permission: "platform.applications.view" },
       ].filter(item => !item.permission || hasPermission(item.permission)),
+    },
+    {
+      label: "Commercial Catalog",
+      items: [
+        { name: "Product Catalog", href: "/catalog", icon: <Boxes className="w-5 h-5" />, permission: "platform.catalog.view" },
+      ].filter(item => !item.permission || hasPermission(item.permission) || hasPermission("platform.applications.view")),
     },
     {
       label: t("settings.title"),

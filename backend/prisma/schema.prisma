@@ -18,12 +18,12 @@ enum OrganizationStatus {
 }
 
 model Organization {
-  id                  String                  @id @default(uuid())
-  name                String                  @unique
-  code                String                  @unique
-  status              OrganizationStatus      @default(ACTIVE)
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  id                  String                    @id @default(uuid())
+  name                String                    @unique
+  code                String                    @unique
+  status              OrganizationStatus        @default(ACTIVE)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   users               User[]
   applicationAccesses UserApplicationAccess[]
   applications        OrganizationApplication[]
@@ -54,14 +54,14 @@ enum ApplicationStatus {
 }
 
 model Application {
-  id                  String                  @id @default(uuid())
-  code                String                  @unique // e.g. "PLATFORM", "TICKETING", "CONCESSION"
+  id                  String                    @id @default(uuid())
+  code                String                    @unique // e.g. "PLATFORM", "TICKETING", "CONCESSION"
   name                String
   description         String?
-  status              ApplicationStatus       @default(ACTIVE)
-  launchEnabled       Boolean                 @default(true)
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  status              ApplicationStatus         @default(ACTIVE)
+  launchEnabled       Boolean                   @default(true)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   roles               Role[]
   permissions         Permission[]
   applicationAccesses UserApplicationAccess[]
@@ -147,8 +147,8 @@ model AuditLog {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String   // e.g. "LOGIN", "USER_CREATED"
-  entity    String   // e.g. "User", "Role"
+  action    String // e.g. "LOGIN", "USER_CREATED"
+  entity    String // e.g. "User", "Role"
   entityId  String
   payload   Json?
   createdAt DateTime @default(now())
@@ -244,3 +244,142 @@ model ExecutiveAlert {
   @@index([category])
 }
 
+// ============================================================================
+// PHASE 8A.1: PRODUCT CATALOG DOMAIN
+// ============================================================================
+
+model Module {
+  id          String    @id @default(uuid())
+  code        String    @unique // e.g. "pos", "inventory", "crm", "report", "cinema", "fnb", "parking"
+  name        String
+  description String?
+  isShared    Boolean   @default(true)
+  status      String    @default("ACTIVE") // ACTIVE, DISABLED
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  features    Feature[]
+
+  @@index([status])
+  @@index([code])
+}
+
+model Feature {
+  id               String              @id @default(uuid())
+  key              String              @unique // canonical: e.g. "pos.checkout.cash"
+  name             String
+  description      String?
+  moduleCode       String
+  module           Module              @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
+  isCore           Boolean             @default(false)
+  status           String              @default("ACTIVE") // ACTIVE, DISABLED
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  planFeatures     PlanFeature[]
+  addOnFeatures    AddOnFeature[]
+  verticalFeatures VerticalFeature[]
+  dependencies     FeatureDependency[] @relation("FeatureAsDependent")
+  requiredBy       FeatureDependency[] @relation("FeatureAsRequired")
+
+  @@index([moduleCode])
+  @@index([key])
+  @@index([status])
+}
+
+model FeatureDependency {
+  id             String   @id @default(uuid())
+  featureKey     String
+  dependsOnKey   String
+  dependencyType String   @default("REQUIRED") // REQUIRED, OPTIONAL, RECOMMENDED
+  createdAt      DateTime @default(now())
+  feature        Feature  @relation("FeatureAsDependent", fields: [featureKey], references: [key], onDelete: Cascade)
+  dependsOn      Feature  @relation("FeatureAsRequired", fields: [dependsOnKey], references: [key], onDelete: Cascade)
+
+  @@unique([featureKey, dependsOnKey])
+  @@index([featureKey])
+  @@index([dependsOnKey])
+}
+
+model Plan {
+  id           String        @id @default(uuid())
+  code         String        @unique // e.g. "PLAN_FREE", "PLAN_STARTER", "PLAN_PRO", "PLAN_BUSINESS", "PLAN_ENTERPRISE"
+  name         String
+  tier         String // FREE, STARTER, PRO, BUSINESS, ENTERPRISE
+  description  String?
+  status       String        @default("ACTIVE") // ACTIVE, DISABLED, ARCHIVED
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  planFeatures PlanFeature[]
+
+  @@index([code])
+  @@index([tier])
+  @@index([status])
+}
+
+model PlanFeature {
+  id         String   @id @default(uuid())
+  planCode   String
+  featureKey String
+  createdAt  DateTime @default(now())
+  plan       Plan     @relation(fields: [planCode], references: [code], onDelete: Cascade)
+  feature    Feature  @relation(fields: [featureKey], references: [key], onDelete: Cascade)
+
+  @@unique([planCode, featureKey])
+  @@index([planCode])
+  @@index([featureKey])
+}
+
+model AddOn {
+  id            String         @id @default(uuid())
+  code          String         @unique // e.g. "ADDON_KDS", "ADDON_SELF_ORDER", "ADDON_LOYALTY", "ADDON_ADV_WMS", "ADDON_OPEN_API", "ADDON_WHATSAPP"
+  name          String
+  description   String?
+  status        String         @default("ACTIVE") // ACTIVE, DISABLED, ARCHIVED
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  addOnFeatures AddOnFeature[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model AddOnFeature {
+  id         String   @id @default(uuid())
+  addOnCode  String
+  featureKey String
+  createdAt  DateTime @default(now())
+  addOn      AddOn    @relation(fields: [addOnCode], references: [code], onDelete: Cascade)
+  feature    Feature  @relation(fields: [featureKey], references: [key], onDelete: Cascade)
+
+  @@unique([addOnCode, featureKey])
+  @@index([addOnCode])
+  @@index([featureKey])
+}
+
+model Vertical {
+  id               String            @id @default(uuid())
+  code             String            @unique // e.g. "VERTICAL_CINEMA", "VERTICAL_FNB", "VERTICAL_PARKING", "VERTICAL_RETAIL", "VERTICAL_BILLIARD", "VERTICAL_SERVICE"
+  name             String
+  description      String?
+  status           String            @default("ACTIVE") // ACTIVE, DISABLED, ARCHIVED
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  verticalFeatures VerticalFeature[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model VerticalFeature {
+  id           String   @id @default(uuid())
+  verticalCode String
+  featureKey   String
+  createdAt    DateTime @default(now())
+  vertical     Vertical @relation(fields: [verticalCode], references: [code], onDelete: Cascade)
+  feature      Feature  @relation(fields: [featureKey], references: [key], onDelete: Cascade)
+
+  @@unique([verticalCode, featureKey])
+  @@index([verticalCode])
+  @@index([featureKey])
+}
