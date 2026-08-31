@@ -19,10 +19,40 @@ import securityRouter from "./modules/security/router";
 const app = express();
 
 // Global Middlewares
+const envOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim())
+  : [];
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3011",
+  "http://localhost:3050",
+  "https://cinema.168billiard.online",
+  "https://platform.168billiard.online",
+  "https://ticket.168billiard.online",
+  "https://concession.168billiard.online",
+  ...envOrigins,
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".168billiard.online") ||
+        origin === "https://168billiard.online" ||
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1")
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Cookie"],
   })
 );
 app.use(cookieParser(process.env.SESSION_SECRET || "platformcookieparsersecret"));
