@@ -14,12 +14,18 @@ export const loginHandler = async (req: Request, res: Response) => {
   const result = await authService.login(value);
 
   // Set secure HTTP-only cookie
-  res.cookie("session_token", result.sessionToken, {
+  const isProd = process.env.NODE_ENV === "production";
+  const cookieOptions: any = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  });
+  };
+  if (process.env.COOKIE_DOMAIN) {
+    cookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  res.cookie("session_token", result.sessionToken, cookieOptions);
 
   // Log activity
   await logActivity(result.user.id, "LOGIN", "User", result.user.id, { email: result.user.email });
@@ -35,11 +41,17 @@ export const logoutHandler = async (req: Request, res: Response) => {
   }
 
   // Clear cookie
-  res.clearCookie("session_token", {
+  const isProd = process.env.NODE_ENV === "production";
+  const clearCookieOptions: any = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-  });
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+  };
+  if (process.env.COOKIE_DOMAIN) {
+    clearCookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  res.clearCookie("session_token", clearCookieOptions);
 
   if (req.user) {
     await logActivity(req.user.id, "LOGOUT", "User", req.user.id);
