@@ -230,8 +230,8 @@ export async function seedUat() {
   }
   console.log("✓ System Roles & Role-Permission mappings verified");
 
-  // 5. UAT Accounts Creation (Password: test1234)
-  const uatPasswordPlain = "test1234";
+  // 5. UAT Accounts Creation (Password: Uat12345!)
+  const uatPasswordPlain = "Uat12345!";
   const uatPasswordHash = await argon2.hash(uatPasswordPlain);
 
   const hqOrg = orgsMap["PLANET-HQ"];
