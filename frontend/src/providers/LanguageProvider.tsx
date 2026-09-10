@@ -64,7 +64,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const formatDate = (value: string | Date, options?: Intl.DateTimeFormatOptions) => {
     const dateValue = value instanceof Date ? value : new Date(value);
-    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", options).format(dateValue);
+    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
+      hour12: false,
+      ...options,
+    }).format(dateValue);
   };
 
   const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>

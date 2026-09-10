@@ -67,7 +67,7 @@ export default function AuditLogsPage() {
                     <td className="px-6 py-4 text-text-primary font-medium whitespace-nowrap font-mono text-xs text-text-secondary">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-text-muted" />
-                        {new Date(log.createdAt).toLocaleString("id-ID")}
+                        {new Date(log.createdAt).toLocaleString("id-ID", { hour12: false })}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-text-primary font-medium">

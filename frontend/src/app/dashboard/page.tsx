@@ -206,7 +206,7 @@ export default function UnifiedExecutiveDashboard() {
   const formatTimeOnly = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
     } catch {
       return isoString;
     }
@@ -792,7 +792,7 @@ export default function UnifiedExecutiveDashboard() {
                                     </p>
                                   </div>
                                   <div className="text-[10px] text-text-muted sm:text-right shrink-0">
-                                    {new Date(log.createdAt).toLocaleString("id-ID")}
+                                    {new Date(log.createdAt).toLocaleString("id-ID", { hour12: false })}
                                   </div>
                                 </div>
                               </div>
@@ -876,7 +876,7 @@ export default function UnifiedExecutiveDashboard() {
                                 </p>
                               </div>
                               <div className="text-xs text-text-muted sm:text-right shrink-0">
-                                {new Date(act.timestamp).toLocaleString("id-ID")}
+                                {new Date(act.timestamp).toLocaleString("id-ID", { hour12: false })}
                               </div>
                             </div>
                           </div>
@@ -1016,7 +1016,7 @@ export default function UnifiedExecutiveDashboard() {
               </div>
               <div className="border-t border-border/40 pt-3 col-span-2">
                 <p className="text-xs text-text-muted">Waktu Transaksi</p>
-                <p className="font-medium mt-1">{new Date(selectedTx.timestamp).toLocaleString("id-ID")}</p>
+                <p className="font-medium mt-1">{new Date(selectedTx.timestamp).toLocaleString("id-ID", { hour12: false })}</p>
               </div>
               {selectedTx.customerName && (
                 <div className="border-t border-border/40 pt-3">

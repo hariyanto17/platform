@@ -381,7 +381,7 @@ export default function SettingDetailPage({ params }: { params: Promise<{ key: s
             <div className="flex justify-between border-b border-slate-800/60 pb-2">
               <span className="text-slate-500">Last Modified:</span>
               <span className="font-mono text-[10px] text-slate-400">
-                {setting?.updatedAt ? new Date(setting.updatedAt).toLocaleString("id-ID") : "N/A"}
+                {setting?.updatedAt ? new Date(setting.updatedAt).toLocaleString("id-ID", { hour12: false }) : "N/A"}
               </span>
             </div>
           </div>
@@ -414,7 +414,7 @@ export default function SettingDetailPage({ params }: { params: Promise<{ key: s
                 {settingAudits.map((audit) => (
                   <tr key={audit.id} className="hover:bg-slate-800/10">
                     <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">
-                      {new Date(audit.createdAt).toLocaleString("id-ID")}
+                      {new Date(audit.createdAt).toLocaleString("id-ID", { hour12: false })}
                     </td>
                     <td className="py-2.5 px-3 font-bold text-slate-100">{audit.action}</td>
                     <td className="py-2.5 px-3">{audit.user?.email || "System"}</td>

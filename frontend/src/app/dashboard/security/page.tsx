@@ -303,7 +303,7 @@ export default function SecurityCompliancePage() {
                       className="hover:bg-slate-800/20 transition cursor-pointer"
                     >
                       <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">
-                        {new Date(act.timestamp).toLocaleString("id-ID")}
+                        {new Date(act.timestamp).toLocaleString("id-ID", { hour12: false })}
                       </td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider ${sevColor}`}>
@@ -391,7 +391,7 @@ export default function SecurityCompliancePage() {
                   <div className="flex justify-between">
                     <span className="text-slate-500">Timestamp:</span>
                     <span className="text-slate-400 font-mono text-[10px]">
-                      {new Date(detail.timestamp).toLocaleString("id-ID")}
+                      {new Date(detail.timestamp).toLocaleString("id-ID", { hour12: false })}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -436,7 +436,7 @@ export default function SecurityCompliancePage() {
                           <div>
                             <span className="text-slate-200 font-bold block">{ce.eventType}</span>
                             <span className="text-[9px] text-slate-500 font-mono">
-                              {new Date(ce.timestamp).toLocaleTimeString("id-ID")}
+                              {new Date(ce.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false })}
                             </span>
                           </div>
                           <span className="text-[9px] uppercase font-black text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">

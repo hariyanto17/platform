@@ -469,9 +469,9 @@ export default function AlertsPage() {
                       <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">{alert.description}</p>
                       <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 pt-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        Detected: {new Date(alert.detectedAt).toLocaleString("id-ID")}
+                        Detected: {new Date(alert.detectedAt).toLocaleString("id-ID", { hour12: false })}
                         {alert.resolvedAt && (
-                          <span className="text-emerald-500">• Resolved: {new Date(alert.resolvedAt).toLocaleString("id-ID")}</span>
+                          <span className="text-emerald-500">• Resolved: {new Date(alert.resolvedAt).toLocaleString("id-ID", { hour12: false })}</span>
                         )}
                       </div>
                     </div>
@@ -582,7 +582,7 @@ export default function AlertsPage() {
               <div className="grid grid-cols-2 border-b border-slate-800/50 pb-2.5">
                 <span className="text-slate-500">Detected:</span>
                 <span className="text-right text-slate-400 font-mono text-[10px]">
-                  {new Date(selectedAlert.detectedAt).toLocaleString("id-ID")}
+                  {new Date(selectedAlert.detectedAt).toLocaleString("id-ID", { hour12: false })}
                 </span>
               </div>
             </div>

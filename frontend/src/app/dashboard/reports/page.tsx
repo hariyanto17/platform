@@ -972,7 +972,7 @@ export default function ReportsPage() {
                         {s.studioName}
                       </td>
                       <td className="px-4 py-3 text-slate-400">
-                        {s.showDate} {new Date(s.startTime).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                        {s.showDate} {new Date(s.startTime).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false })}
                       </td>
                       <td className="px-4 py-3 text-right text-slate-300">{s.totalSeats}</td>
                       <td className="px-4 py-3 text-right font-semibold text-sky-400">{s.soldSeats}</td>
