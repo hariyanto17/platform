@@ -244,3 +244,94 @@ model ExecutiveAlert {
   @@index([category])
 }
 
+enum PaymentStatus {
+  PENDING
+  SETTLEMENT
+  CAPTURE
+  DENY
+  CANCEL
+  EXPIRE
+  FAILURE
+  REFUND
+}
+
+enum PaymentProvider {
+  MIDTRANS
+  MANUAL
+}
+
+model PaymentTransaction {
+  id                    String              @id @default(uuid())
+  transactionNumber     String              @unique // Master Transaction Number (e.g. TRX-20260928-XXXX)
+  appCode               String              // "TICKETING", "CONCESSION", "PARKING", "COMBO"
+  externalOrderId       String              // Order ID pada sistem asal (e.g. ORD-TCK-001)
+  provider              PaymentProvider     @default(MIDTRANS)
+  paymentType           String              @default("qris") // qris, snap, gopay, bank_transfer
+  grossAmount           Float
+  currency              String              @default("IDR")
+  status                PaymentStatus       @default(PENDING)
+  midtransTransactionId String?             @unique
+  snapToken             String?
+  redirectUrl           String?             // QR code image URL atau payment URL
+  qrString              String?             // Raw QR string untuk render lokal
+  customerName          String?
+  customerEmail         String?
+  customerPhone         String?
+  itemDetails           Json?               // Snapshot item yang dibeli
+  metadata              Json?               // Informasi tambahan / context
+  rawResponse           Json?               // Respons lengkap dari Midtrans
+  expiredAt             DateTime?
+  settledAt             DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  splitItems            PaymentSplitItem[]
+  webhookLogs           PaymentWebhookLog[]
+
+  @@index([appCode])
+  @@index([externalOrderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PaymentSplitItem {
+  id                    String             @id @default(uuid())
+  paymentTransactionId  String
+  targetAppCode         String             // TICKETING, CONCESSION, PARKING
+  targetOrderId         String             // ID sub-order spesifik di microservice target
+  amount                Float
+  status                PaymentStatus      @default(PENDING)
+  dispatchedAt          DateTime?
+  acknowledgedAt        DateTime?
+  dispatchResponse      Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  paymentTransaction    PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+
+  @@index([paymentTransactionId])
+  @@index([targetAppCode, targetOrderId])
+}
+
+model PaymentWebhookLog {
+  id                    String              @id @default(uuid())
+  paymentTransactionId  String?
+  provider              String              @default("MIDTRANS")
+  orderId               String              // order_id dari payload webhook
+  statusCode            String?
+  grossAmount           String?
+  signatureKey          String?
+  isSignatureValid      Boolean
+  eventStatus           String              // transaction_status dari payload
+  payload               Json
+  dispatchStatus        String              // SUCCESS, FAILED, RETRYING, SKIPPED
+  dispatchError         String?
+  createdAt             DateTime            @default(now())
+
+  paymentTransaction    PaymentTransaction? @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([isSignatureValid])
+  @@index([createdAt])
+}
+
