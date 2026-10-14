@@ -1,7 +1,10 @@
 import { createApi, fetchBaseQuery, BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query/react";
 
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const baseUrl = rawBaseUrl.replace(/\/api\/?$/, "");
+
 const baseQuery = fetchBaseQuery({
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
+  baseUrl,
   credentials: "include", // Ensure session cookies are sent
 });
 

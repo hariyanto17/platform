@@ -7,5 +7,10 @@ export interface ApiResponse<T> {
     page: number;
     limit: number;
     totalPages: number;
+    source?: string;
+    counts?: {
+      platform: number;
+      ticketing: number;
+    };
   };
 }

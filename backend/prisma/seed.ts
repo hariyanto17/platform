@@ -159,9 +159,19 @@ async function main() {
 
   for (const setting of defaultSettings) {
     await prisma.appSetting.upsert({
-      where: { key: setting.key },
+      where: {
+        key_scope_scopeId: {
+          key: setting.key,
+          scope: "GLOBAL",
+          scopeId: "",
+        },
+      },
       update: {},
-      create: setting,
+      create: {
+        ...setting,
+        scope: "GLOBAL",
+        scopeId: "",
+      },
     });
   }
   console.log("- Default settings seeded");
